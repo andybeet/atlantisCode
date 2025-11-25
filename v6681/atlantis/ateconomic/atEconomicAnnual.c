@@ -1051,12 +1051,6 @@ void Do_EconArray_Rescaling(MSEBoxModel *bm) {
             }
         }
     }
-    
-    // Clean up
-    if(bm->EffortReScale)
-        free1d(bm->EffortReScale);
-    if(bm->CatchReScale)
-        free1d(bm->CatchReScale);
-    
+        
     return;
 }
