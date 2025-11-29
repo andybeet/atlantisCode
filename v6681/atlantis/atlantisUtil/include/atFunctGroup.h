@@ -249,6 +249,7 @@ typedef struct {
      */
     int **contaminantTracers;   /* Base contaminant levels in a species */
     int **contamPropTracers;    /* So can track proportion of the individuals effected */
+    double ****agingContam;       /* For transferring contaminants */
     double *contaminantSpMort;	/* Mortality of each group/cohort due to all contaminants - calculated for each timestep */
     double **calcCLinearMort;	/* Mortality of each group/cohort due to this contaminant - calculated for each timestep */
 
@@ -315,7 +316,9 @@ typedef struct {
     double *speciesParams;
     double **cohortSpeciesParams;
     double **spawnSpeciesParams;
+    
     int *co_sp;
+    double **co_sp_catch;
 
     long double **preyEaten;			/** Prey eaten in each habitat type */
     long double ***preyEatenGlobal;
@@ -457,6 +460,7 @@ typedef struct{
 	double **RN;
 	double **aging;
 	double **Box;
+    int **ReprodAllowed;
     
     double **MigYOY;
     double **MigYOY_SN;
@@ -480,6 +484,7 @@ typedef struct{
     int **IsPartialMigration_Prm;
     int **PartialMigration_MinPrm;
     int **PartialMigration_MaxPrm;
+    int **ReprodAllowedPrm;
     double **survival_Prm;
     double **growth_Prm;
     int **returnstock_Prm;

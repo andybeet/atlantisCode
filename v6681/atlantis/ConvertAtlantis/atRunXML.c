@@ -83,6 +83,13 @@ void Convert_Run_To_XML(MSEBoxModel *bm, char *fileName, char *outputFileName) {
 
 	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "trackAtomicRatio", "Flag to turn on tracking atomic ratios.", "", XML_TYPE_BOOLEAN,"0");
     
+    bm->track_atomic_ratio = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, binary_check, "trackAtomicRatio");
+    if(bm->track_atomic_ratio) {
+        Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flagratio_warn", "Flag to turn on atomic ratio warning messages.", "", XML_TYPE_BOOLEAN,"0");
+        Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "N_to_C", "Base ratio of Nitrogen to Carbon.", "", XML_TYPE_FLOAT,"0");
+        Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "N_to_P", "Base ratio of Nitrogen to Phosphorous.", "", XML_TYPE_FLOAT,"0");
+    }
+    
     Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "external_populations", "Flag indicating use of external population model", "", XML_TYPE_BOOLEAN,"0");
     Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flag_multiyr_migs", "Flag to turn on multiyear migrations.", "", XML_TYPE_BOOLEAN,"0");
 
@@ -93,6 +100,8 @@ void Convert_Run_To_XML(MSEBoxModel *bm, char *fileName, char *outputFileName) {
 	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "mirror_invalid", "Flag to indicate how to deal with invalid hydrodynamic exchanges.", "", XML_TYPE_BOOLEAN,"0");
 
 	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flag_replicated_old", "Flag to replicate old model results before the trunk code was merged.", "", XML_TYPE_BOOLEAN,"0");
+    Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flag_replicated_old_PPmort", "Flag to replicate old model code assumptions around primary production mortality before the trunk code was merged.", "", XML_TYPE_BOOLEAN,"0");
+    
     Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flag_old_embryo_init", "Flag to use the old means of having embryoes carried over from spawning pre-model start.", "", XML_TYPE_BOOLEAN,"0");
     Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flag_replicate_old_calendar", "Flag to replicate old calendar for aging and spawning - when done once per year rather than having 1 queue for the entire model run.", "", XML_TYPE_BOOLEAN,"0");
     Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flag_sanity_check", "Flag to trigger sanity checks.", "", XML_TYPE_BOOLEAN,"0");

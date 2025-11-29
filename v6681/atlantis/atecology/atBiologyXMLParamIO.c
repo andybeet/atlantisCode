@@ -1913,13 +1913,14 @@ static void Read_Movement_Values(MSEBoxModel *bm, char *fileName, xmlNodePtr par
 	Read_VERT_Function(bm, fileName, attributeGroupNode);
 	Read_Sesonal_Dist_XML(bm, fileName, attributeGroupNode);
 
-	bm->flagtempdepend = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, attributeGroupNode, integer_check, "flagtempdepend");
+	bm->flagtempdepend_move = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, attributeGroupNode, integer_check, "flagtempdepend_move");
+    bm->flagtempdepend_reprod = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, attributeGroupNode, integer_check, "flagtempdepend_reprod");
 	bm->flagsaltdepend = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, attributeGroupNode, integer_check, "flagsaltdepend");
 	bm->flagO2depend = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, attributeGroupNode, integer_check, "flagO2depend");
     bm->flagconstrain_epiwander = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, attributeGroupNode, integer_check, "flagconstrain_epiwander");
 
 	Util_XML_Read_Species_Param(bm, fileName, attributeGroupNode, ddepend_move_id);
-	if (bm->flagtempdepend) {
+	if (bm->flagtempdepend_move) {
 		Util_XML_Read_Species_Param(bm, fileName, attributeGroupNode, max_move_temp_id);
 		Util_XML_Read_Species_Param(bm, fileName, attributeGroupNode, min_move_temp_id);
         Util_XML_Read_Species_Param(bm, fileName, attributeGroupNode, K_temp_const_id);
@@ -3499,7 +3500,7 @@ static void Read_Reproduction_Values(MSEBoxModel *bm, char *fileName, xmlNodePtr
 	Util_XML_Read_Species_Param(bm, fileName, attributeGroupNode, KWSR_id);
 	Util_XML_Read_Species_Param(bm, fileName, attributeGroupNode, KWRR_id);
 
-    if (bm->flagtempdepend) {
+    if (bm->flagtempdepend_reprod) {
         Util_XML_Read_Species_Param(bm, fileName, attributeGroupNode, min_spawn_temp_id);
         Util_XML_Read_Species_Param(bm, fileName, attributeGroupNode, max_spawn_temp_id);
     }
@@ -4299,6 +4300,8 @@ void Create_Migration_Arrays(MSEBoxModel *bm, FILE *llogfp) {
         MIGRATION[sp].InitSN = Util_Alloc_Init_2D_Double(maxnum, cohort, 0.0);
         MIGRATION[sp].InitRN = Util_Alloc_Init_2D_Double(maxnum, cohort, 0.0);
         
+        MIGRATION[sp].ReprodAllowed = Util_Alloc_Init_2D_Int(maxnum, cohort, 0.0);
+        
         MIGRATION[sp].yrs_to_age_pre_model = Util_Alloc_Init_1D_Int(maxnum, 0);
         MIGRATION[sp].end_pt = Util_Alloc_Init_1D_Int(maxnum, 0);
         
@@ -4322,7 +4325,7 @@ void Create_Migration_Arrays(MSEBoxModel *bm, FILE *llogfp) {
         MIGRATION[sp].IsPartialMigration_Prm = Util_Alloc_Init_2D_Int(num_migs, FunctGroupArray[sp].numStages, 0);
         MIGRATION[sp].PartialMigration_MinPrm = Util_Alloc_Init_2D_Int(num_migs, FunctGroupArray[sp].numStages, 0);
         MIGRATION[sp].PartialMigration_MaxPrm = Util_Alloc_Init_2D_Int(num_migs, FunctGroupArray[sp].numStages, 0);
-
+        MIGRATION[sp].ReprodAllowedPrm = Util_Alloc_Init_2D_Int(num_migs, FunctGroupArray[sp].numStages, 0);
                 
     }
 

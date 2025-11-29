@@ -181,6 +181,12 @@ static int Read_Run_Parameters(MSEBoxModel *bm, char *fileName) {
 
 	/* Read in information about additional tracers */
 	bm->track_atomic_ratio = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, binary_check, "trackAtomicRatio");
+    if(bm->track_atomic_ratio) {
+        bm->flagratio_warn = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, binary_check, "flagratio_warn");
+        bm->N_to_C = Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, no_checking, "N_to_C");
+        bm->N_to_P = Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, no_checking, "N_to_P");
+    }
+    
 	bm->track_rugosity_arag = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, integer_check, "track_rugosity_arag");
 	bm->track_pH = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, integer_check, "track_pH");
     bm->flag_use_deltaH = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, integer_check, "flag_use_deltaH");
@@ -191,6 +197,8 @@ static int Read_Run_Parameters(MSEBoxModel *bm, char *fileName) {
     bm->mirror_invalid = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, integer_check, "mirror_invalid");
 	
     bm->flag_replicated_old = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, binary_check, "flag_replicated_old");
+    bm->flag_replicated_old_PPmort = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, binary_check, "flag_replicated_old_PPmort");
+
     bm->flag_old_embryo_init = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, binary_check, "flag_old_embryo_init");
     bm->flag_replicate_old_calendar = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, binary_check, "flag_replicate_old_calendar");
     bm->flag_sanity_check = (int) Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, binary_check, "flag_sanity_check");

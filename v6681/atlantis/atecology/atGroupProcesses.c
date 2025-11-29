@@ -557,9 +557,11 @@ int Phytoplankton_Process(MSEBoxModel *bm, FILE *llogfp, HABITAT_TYPES habitatTy
 			Primary_Production(bm, llogfp, guild, bm->flagmicro, lim_case, 0, initialBiomass,
 					boxLayerInfo->DIN, NH, NO, Si, Fe, P, PRatio, C, CRatio, IRR, mum, 1.0, 0, 0, 0, &uptakeNO, &uptakeSi, &uptakeFe, &uptakeP, &uptakeC, &hN);
 
-
-			/* Zero out the mortality value so we can use generic rate of change equations later */
-			FunctGroupArray[guild].mortality[0] = 0.0;
+            // TODO: I think this is a bug and hangover from when did not have plankton mortality explciitly nut will screw with older models so include in bug trap flag
+            if (bm->flag_replicated_old_PPmort) {
+                /* Zero out the mortality value so we can use generic rate of change equations later */
+                FunctGroupArray[guild].mortality[0] = 0.0;
+            }
 
 			boxLayerInfo->NutsLost[habitatType][NH_id] += FunctGroupArray[guild].uptakeNH[cohort];
 			boxLayerInfo->NutsLost[habitatType][NO_id] += uptakeNO;
@@ -568,13 +570,13 @@ int Phytoplankton_Process(MSEBoxModel *bm, FILE *llogfp, HABITAT_TYPES habitatTy
 			boxLayerInfo->NutsLost[habitatType][P_id] += uptakeP;
 			boxLayerInfo->NutsLost[habitatType][C_id] += uptakeC;
 
-			boxLayerInfo->DetritusProd[habitatType][DLdet_id] += FunctGroupArray[guild].lysis[cohort];
+			boxLayerInfo->DetritusProd[habitatType][DLdet_id] += FunctGroupArray[guild].lysis[cohort] + FunctGroupArray[guild].mortality[0];
 
 			/* Contaminants transfer into detritus */
 			if(bm->track_contaminants){
-                //fprintf(bm->logFile,"Calling Group_Transfer_Contaminant from Update_Detritus WC WC - %s-%d with initialBiomass: %e lysis: %e\n", FunctGroupArray[guild].groupCode, cohort, initialBiomass, FunctGroupArray[guild].lysis[cohort]);
+                //fprintf(bm->logFile,"Calling Group_Transfer_Contaminant from Phytoplankton_Process WC WC - %s-%d with initialBiomass: %e lysis: %e\n", FunctGroupArray[guild].groupCode, cohort, initialBiomass, FunctGroupArray[guild].lysis[cohort]);
                 
-                Group_Transfer_Contaminant(bm, boxLayerInfo, WC, WC, LabDetIndex, 0, guild, cohort,  FunctGroupArray[guild].lysis[cohort], 0, initialBiomass, bm->dtsz_stored, 0, 20);
+                Group_Transfer_Contaminant(bm, boxLayerInfo, WC, WC, LabDetIndex, 0, guild, cohort,  (FunctGroupArray[guild].lysis[cohort] + FunctGroupArray[guild].mortality[0]), 0, initialBiomass, bm->dtsz_stored, 0, 20);
 			}
 			FunctGroupArray[guild].chl = initialBiomass;
 
@@ -1386,9 +1388,12 @@ int Dinoflag_Process(MSEBoxModel *bm, FILE *llogfp, HABITAT_TYPES habitatType, i
 			}
 
 
-			/* Zero out the mortality value so we can use generic rate of change equations later */
-			FunctGroupArray[guild].mortality[0] = 0.0;
-
+            // TODO: I think this is a bug and hangover from when did not have plankton mortality explciitly nut will screw with older models so include in bug trap flag
+            if (bm->flag_replicated_old_PPmort) {
+                /* Zero out the mortality value so we can use generic rate of change equations later */
+                FunctGroupArray[guild].mortality[0] = 0.0;
+            }
+                
 			/* Mixotrophic growth - modified from Stickney, Hood and Stoecker, 2000.
 			 The impact of mixotrophy on planktonic marine ecosystems. Ecol. Model. 125: 203-230.
 			 First determine potential grazing - dinoflagellates ae reported to feed on-
@@ -1489,14 +1494,14 @@ int Dinoflag_Process(MSEBoxModel *bm, FILE *llogfp, HABITAT_TYPES habitatType, i
 			boxLayerInfo->DetritusLost[WC][DRdet_id] += GRAZEinfo[RefDetIndex][0][WC];
 			boxLayerInfo->DetritusLost[WC][DLdet_id] += GRAZEinfo[LabDetIndex][0][WC];
 
-			boxLayerInfo->DetritusProd[WC][DLdet_id] += FunctGroupArray[guild].lysis[cohort];
+			boxLayerInfo->DetritusProd[WC][DLdet_id] += FunctGroupArray[guild].lysis[cohort] + FunctGroupArray[guild].mortality[0];
 
 			/* Contaminants transfer */
 			if(bm->track_contaminants){
 				/* Gains in DL due to mortality */
                 //fprintf(bm->logFile,"Calling Group_Transfer_Contaminant from Update_Detritus WC WC - %s-%d with initialBiomass: %e lysis: %e\n", FunctGroupArray[guild].groupCode, cohort, initialBiomass, FunctGroupArray[guild].lysis[cohort]);
                 
-                Group_Transfer_Contaminant(bm, boxLayerInfo, WC, WC, LabDetIndex, 0, guild, cohort, FunctGroupArray[guild].lysis[cohort], 0, initialBiomass, bm->dtsz_stored, 0, 27);
+                Group_Transfer_Contaminant(bm, boxLayerInfo, WC, WC, LabDetIndex, 0, guild, cohort, (FunctGroupArray[guild].lysis[cohort] + FunctGroupArray[guild].mortality[0]), 0, initialBiomass, bm->dtsz_stored, 0, 27);
 			}
 
 			if(bm->track_atomic_ratio == TRUE){

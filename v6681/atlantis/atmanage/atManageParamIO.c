@@ -240,7 +240,8 @@ void readCompanionSpeciesXML(MSEBoxModel *bm, char *fileName, xmlNodePtr parent)
 	char errorString[STRLEN];
 	char *nodeName =  Util_Get_Node_Name(parent);
 
-
+    printf("Doing readCompanionSpeciesXML\n");
+    
 	sprintf(errorString, "%s/CompanionSpecies", nodeName);
 
 	attributeGroup = Util_XML_Get_Node(ATLANTIS_ATTRIBUTE, parent, "CompanionSpecies");
@@ -261,6 +262,56 @@ void readCompanionSpeciesXML(MSEBoxModel *bm, char *fileName, xmlNodePtr parent)
 		}
 	}
 	free(nodeName);
+}
+
+/**
+ *    \brief Read the companion catch ratios
+ */
+static void Read_Fishery_Companion_Catch_XML(MSEBoxModel *bm, char *fileName, xmlNodePtr parent) {
+    
+    double *values = 0;
+    int guild, nf, co_sp;
+    xmlNodePtr attributeNode, speciesNode;
+    char str[100];
+    char errorString[STRLEN];
+
+    if (verbose)
+        printf("Reading co_sp_catch values\n");
+
+    attributeNode = Util_XML_Get_Node(ATLANTIS_ATTRIBUTE, parent, "co_sp_catch");
+    if (attributeNode == NULL)
+        quit("CompanionSpeciesCatch attribute group not found in input file %s.\n", fileName);
+
+    /* Create a node for each functional group*/
+    for (guild = 0; guild < bm->K_num_tot_sp; guild++) {
+        if (FunctGroupArray[guild].isFished == TRUE) {
+
+            sprintf(errorString, "Companion_Parameters/co_sp_catch/%s", FunctGroupArray[guild].groupCode);
+            speciesNode = Util_XML_Get_Node(ATLANTIS_GROUP_ATTRIBUTE, attributeNode, FunctGroupArray[guild].groupCode);
+            if (speciesNode == NULL)
+                quit("Companion_Parameters/co_sp_catch/%s species attribute group not found.\n", FunctGroupArray[guild].groupCode);
+
+            for (co_sp = 0; co_sp < FunctGroupArray[guild].speciesParams[max_co_sp_id]; co_sp++) {
+
+                sprintf(str, "companion%d", co_sp + 1);
+                sprintf(errorString, "co_sp_catch/%s/%s", FunctGroupArray[guild].groupCode, str);
+
+                if (Util_XML_Read_Array_Double(ATLANTIS_COMPANION_ATTRIBUTE, fileName, errorString, speciesNode, no_checking, str, &values, bm->K_num_fisheries) == FALSE) {
+                    quit("Error: Unable to find parameter '%s/%s' in input file %s\n", errorString, str, fileName);
+                }
+
+                //printf("For %s co_sp %d ", FunctGroupArray[guild].groupCode, co_sp);
+
+                for (nf = 0; nf < bm->K_num_fisheries; nf++) {
+                    FunctGroupArray[guild].co_sp_catch[nf][co_sp] = values[nf];
+                    
+                    //printf(" %e ", values[nf]);
+                }
+                //printf("\n");
+                free(values);
+            }
+        }
+    }
 }
 
 /**
@@ -811,20 +862,9 @@ void readTACXML(MSEBoxModel *bm, char *fileName, xmlNodePtr rootnode) {
 	bm->sp_basket = Util_Alloc_Init_2D_Int(bm->K_num_basket, bm->K_num_tot_sp, bm->K_num_tot_sp);
 
 	readBasketTACXML(bm, fileName, groupingNode);
-
-	bm->K_max_co_sp = (int)Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE,  bm->ecotest, 1, groupingNode, integer_check, "max_co_sp");
-	//Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "max_co_sp", "Maximum number of companions in a companion TAC", "", XML_TYPE_INTEGER, "2");
-
-	for (i = 0; i < bm->K_num_tot_sp; i++) {
-		FunctGroupArray[i].co_sp = Util_Alloc_Init_1D_Int(bm->K_max_co_sp, 0);
-	}
-
-	readCompanionSpeciesXML(bm, fileName, groupingNode);
-
-	Util_XML_Read_Species_Param(bm, fileName, groupingNode, coType_id);
+        
 	Util_XML_Read_Species_Param(bm, fileName, groupingNode, tac_resetperiod_id);
 	bm->bulkTAC = (int)Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE,  bm->ecotest, 1, groupingNode, binary_check, "bulkTAC");
-
 
     for(sp = 0; sp<bm->K_num_tot_sp; sp++){
     	if(FunctGroupArray[sp].isImpacted == TRUE){
@@ -842,11 +882,30 @@ void readTACXML(MSEBoxModel *bm, char *fileName, xmlNodePtr rootnode) {
     	bm->bulkTAC = 0;
 
 
-    Util_XML_Read_Impacted_Group_Param(bm, fileName, groupingNode, co_sp_catch_id);
-	Util_XML_Read_Impacted_Group_Param(bm, fileName, groupingNode, co_sp_catch2_id);
 	Util_XML_Read_Fishery_Group_Param(bm, fileName, groupingNode, prop_spawn_close_id);
 
 	Util_XML_Read_Species_Param(bm, fileName, groupingNode, sp_concern_id);
+    
+    groupingNode = Util_XML_Get_Node(ATLANTIS_ATTRIBUTE_SUB_GROUP, rootnode, "Companion_Parameters");
+    if (groupingNode == NULL)
+        quit("readTACXML: Companion_Parameters attribute group not found in input file %s.\n", fileName);
+
+    bm->K_max_co_sp = (int)Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE,  bm->ecotest, 1, groupingNode, integer_check, "K_max_co_sp");
+    //Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "max_co_sp", "Maximum number of companions in a companion TAC", "", XML_TYPE_INTEGER, "2");
+
+    if( bm->K_max_co_sp > 0) {
+        for (i = 0; i < bm->K_num_tot_sp; i++) {
+            FunctGroupArray[i].co_sp = Util_Alloc_Init_1D_Int(bm->K_max_co_sp, 0);
+            FunctGroupArray[i].co_sp_catch = Util_Alloc_Init_2D_Double(bm->K_max_co_sp, bm->K_num_fisheries, 0.0);
+        }
+
+        Util_XML_Read_Species_Param(bm, fileName, groupingNode, max_co_sp_id);
+        readCompanionSpeciesXML(bm, fileName, groupingNode);
+        Util_XML_Read_Species_Param(bm, fileName, groupingNode, coType_id);
+        
+        Read_Fishery_Companion_Catch_XML(bm, fileName, groupingNode);
+    }
+
 
 }
 

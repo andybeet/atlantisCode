@@ -75,7 +75,7 @@ void Init_Data_Array(MSEBoxModel *bm) {
 	int b, k, j, chrt;
 
 	if ((verbose > 1))
-		fprintf(stderr, "Initialise data arrays\n");
+		printf("Initialise data arrays\n");
 
 	for (b = 0; b < bm->nbox; b++) {
 		for (k = 0; k < 3; k++)

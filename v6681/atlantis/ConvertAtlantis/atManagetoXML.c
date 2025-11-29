@@ -139,6 +139,82 @@ void RegionalTACXML(MSEBoxModel *bm, char *fileName, xmlNodePtr parent, char *st
 	Util_XML_Set_Node_Value(ATLANTIS_GROUP_ATTRIBUTE, parent, FunctGroupArray[speciesIndex].groupCode, valueStr);
 }
 
+/**
+ *    \brief Create the XML structure to hold the co_sp_catch data.
+ *
+ *
+ *    <co_sp_catch>
+ *        <FPL>
+ *            <companion1>
+ *            </companion1>
+ *            <companion2>
+ *            </companion2>
+ *        </FPL>
+ *
+ *    </co_sp_catch>
+ *
+ */
+void Init_Co_Sp_CatchXML(MSEBoxModel *bm, xmlNodePtr parent) {
+
+    xmlNodePtr groupNode;
+    int guild, co_sp;
+    char str[50];
+
+    /* Create a node for each functional group*/
+    for (guild = 0; guild < bm->K_num_tot_sp; guild++) {
+        if (FunctGroupArray[guild].isFished == TRUE) {
+            groupNode = Util_XML_Create_Node(ATLANTIS_GROUP_ATTRIBUTE, parent, FunctGroupArray[guild].groupCode, "", "", "");
+
+            for (co_sp = 0; co_sp < bm->K_max_co_sp; co_sp++) {
+                sprintf(str, "companion%d", co_sp + 1);
+                Util_XML_Create_Node(ATLANTIS_COMPANION_ATTRIBUTE, groupNode, str, "", "", "");
+            }
+        }
+    }
+}
+
+void Co_Sp_CatchXMLFunction(MSEBoxModel *bm, char *fileName, xmlNodePtr parent, char *str, char *valueStr) {
+
+    int cospIndex;
+    char *lastLetter;
+    char *secondlastLetter;
+    char speciesStr[50];
+    int i;
+    char step1Str[50];
+    char tempStr[50];
+    char attributeName[100];
+    int speciesIndex;
+    xmlNodePtr speciesNode;
+
+    // Find stock index
+    strcpy(tempStr, str);
+    strcpy(step1Str, str);
+    lastLetter = step1Str + strlen(step1Str) - 1;
+    secondlastLetter = step1Str + strlen(step1Str) - 2;
+
+    if(isdigit(secondlastLetter[0])) {  // Is the first digit a number if yes then a two digit case
+        cospIndex = atoi(secondlastLetter);
+        tempStr[strlen(secondlastLetter) - strlen("_co_sp_catch") - 2] = '\0';        
+    } else {  // No make it a single string case
+        cospIndex = atoi(lastLetter);
+        tempStr[strlen(tempStr) - strlen("_co_sp_catch") - 1] = '\0';
+    }
+
+    printf("Checking string %s\n", tempStr);
+    
+    // Get the species string section of the string.
+    for (i = 0; isalpha(tempStr[i]); i++) {
+        speciesStr[i] = tempStr[i];
+    }
+    speciesStr[i] = '\0';
+    speciesIndex = Util_Get_FG_Index_From_Token(bm, speciesStr, fileName, str, TRUE);
+    speciesNode = Util_XML_Get_Or_Create_Node(ATLANTIS_GROUP_ATTRIBUTE, parent, FunctGroupArray[speciesIndex].groupCode);
+
+    sprintf(attributeName, "companion%d", cospIndex);
+    Util_XML_Set_Node_Value(ATLANTIS_COMPANION_ATTRIBUTE, speciesNode, attributeName, valueStr);
+
+}
+
 void MakeBasketTACXML(MSEBoxModel *bm, char *fileName, xmlNodePtr parent, char *str, char *valueStr) {
 
     char *groupStr;
@@ -235,7 +311,7 @@ void createImpactedSpeciesParam(MSEBoxModel *bm, char *fileName, xmlNodePtr pare
 		if (FunctGroupArray[speciesIndex].isImpacted == TRUE) {
 
 			if (varstr == NULL) {
-				quit("ERROR: Parameter %s is not the required length in file %s. A value is required for each impacted group.\n", str, fileName);
+				quit("ERROR: createImpactedSpeciesParam - Parameter %s is not the required length in file %s. A value is required for each impacted group.\n", str, fileName);
 			}
 
 			/* get the species node */
@@ -261,7 +337,7 @@ void createFishedSpeciesParam(MSEBoxModel *bm, char *fileName, xmlNodePtr parent
 		if (FunctGroupArray[speciesIndex].isFished == TRUE) {
 
 			if (varstr == NULL) {
-				quit("ERROR: Parameter %s is not the required length in file %s. A value is required for each fished group.\n", str, fileName);
+				quit("ERROR: createFishedSpeciesParam - Parameter %s is not the required length in file %s. A value is required for each fished group.\n", str, fileName);
 			}
 
 			/* get the species node */
@@ -285,7 +361,7 @@ void createSpeciesParam(MSEBoxModel *bm, char *fileName, xmlNodePtr parent, char
 			varstr = strtok(NULL, seps);
 
 		if (varstr == NULL) {
-			quit("ERROR: Parameter %s is not the required length in file %s. A value is required for each functional group.\n", str, fileName);
+			quit("ERROR: createSpeciesParam - Parameter %s is not the required length in file %s. A value is required for each functional group.\n", str, fileName);
 		}
 
 		/* get the species node */
@@ -754,44 +830,11 @@ void TACXML(MSEBoxModel *bm, FILE *fp, char *fileName, xmlDocPtr doc, xmlNodePtr
 
 	Create_Species_ParamXML(bm, fileName, fp, groupingNode, basketSP_id, "Basket quotas flag", "", XML_TYPE_BOOLEAN,"0");
 	Create_Species_ParamXML(bm, fileName, fp, groupingNode, basket_size_id, "Number of each groups in the quota", "", XML_TYPE_INTEGER, "1");
-
-	Parse_File(
-			bm,
-			fp,
-			fileName,
-			groupingNode,
-			"BasketTAC",
-			"^basketTAC_",
-			"Basket quota membership (entries should be the guild id numbers (see top of file for values) for each species in the basket other than the basket_TACFxx group (i.e. in basketTAC_FPS do not put the code for FPS, only the species other than FPS in the basket with FPS). For an entry of 'no other species' (i.e. single species quota) put in a single entry with value -1. Array length should be BasketSize for each species.",
-			"", XML_TYPE_FLOATARRAY, bm->K_num_basket, TRUE, Create_Fished_Species_XMLNodes, MakeBasketTACXML);
-
-	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "max_co_sp", "Maximum number of companions in a companion TAC", "", XML_TYPE_INTEGER, "2");
-	bm->K_max_co_sp = (int)Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE,  bm->ecotest, 1, groupingNode, integer_check, "max_co_sp");
-
-	Parse_File(
-			bm,
-			fp,
-			fileName,
-			groupingNode,
-			"CompanionSpecies",
-			"^co_sp_[A-Z]{2,3}",
-			"Identity of companions in companion TAC - for all entries must have as many entries as for max_co_sp. \nIf there are not enough (or any) companions then for all extra entries enter companion as -1. For those WITH companions entries to the ID numbers of the companion then enter -1 to fill up the rest of the array. \nFor example if max_co_sp = 2 and the companions for FXX were FPS and FVV \nco_sp_FXX    2\n2 4",
-			"", XML_TYPE_INTEGERARRAY, -1, TRUE, Create_Fished_Species_XMLNodes, Fix_Not_Fished_Species_Last_XMLFunction);
-
-
-	Create_Species_ParamXML(bm, fileName, fp, groupingNode, coType_id, "Type of companion TAC (0 = weakest link dictates quota, 1 = strongest link dictates quota)", "", XML_TYPE_BOOLEAN,"1");
-
+    
 	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "bulkTAC", "Whether multi-year TACs are one total for the entire period or if it is annual quota to track just not doing an assessment for x years", "", XML_TYPE_BOOLEAN, "");
 
 	Create_Species_ParamXML(bm, fileName, fp, groupingNode, tac_resetperiod_id, "Multi-year TAC - time (in years between resets)", "", XML_TYPE_FLOAT,"1");
 
-//	createHarvestGroupParamXML(bm, fileName, fp, groupingNode, coType_id, "CompanionTACType", "^coType_",
-//			"Type of companion TAC (0 = weakest link dictates quota, 1 = strongest link dictates quota)", "", XML_TYPE_BOOLEAN,"1");
-
-	Create_Harvest_Fishery_Group_ParamXML(bm, fp, fileName, groupingNode, co_sp_catch_id,
-			"Vectors indicating ratio of catch of companion group identified above with each group in each fishery", "", XML_TYPE_FLOATARRAY);
-	Create_Harvest_Fishery_Group_ParamXML(bm, fp, fileName, groupingNode, co_sp_catch2_id,
-			"Vectors indicating ratio of catch of second companion group identified above with each group in each fishery", "", XML_TYPE_FLOATARRAY);
 	Create_Harvest_Fishery_Group_ParamXML(
 			bm,
 			fp,
@@ -812,6 +855,37 @@ void TACXML(MSEBoxModel *bm, FILE *fp, char *fileName, xmlDocPtr doc, xmlNodePtr
 			"SP_Concern",
 			"Identification of groups of concern - those groups regarded as threatened. If the stock of these groups falls too low then fisheries may be closed. A 1=threatened, 0=ignore",
 			"", XML_TYPE_BOOLEANARRAY, bm->K_num_tot_sp, TRUE, Create_Impacted_Species_XMLNodes, createImpactedSpeciesParam);
+    
+    
+    Parse_File(
+            bm,
+            fp,
+            fileName,
+            groupingNode,
+            "BasketTAC",
+            "^basketTAC_",
+            "Basket quota membership (entries should be the guild id numbers (see top of file for values) for each species in the basket other than the basket_TACFxx group (i.e. in basketTAC_FPS do not put the code for FPS, only the species other than FPS in the basket with FPS). For an entry of 'no other species' (i.e. single species quota) put in a single entry with value -1. Array length should be BasketSize for each species.",
+            "", XML_TYPE_FLOATARRAY, bm->K_num_basket, TRUE, Create_Fished_Species_XMLNodes, MakeBasketTACXML);
+
+    groupingNode = Util_XML_Create_Node(ATLANTIS_ATTRIBUTE_SUB_GROUP, rootnode, "Companion_Parameters", "Companion Catch Parameters", "", "");
+
+    Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "K_max_co_sp", "Maximum number of companions in a companion TAC", "", XML_TYPE_INTEGER, "2");
+    bm->K_max_co_sp = (int)Util_XML_Read_Value(fileName, ATLANTIS_ATTRIBUTE,  bm->ecotest, 1, groupingNode, integer_check, "K_max_co_sp");
+    
+    if (bm->K_max_co_sp > 0) {
+        Create_Species_ParamXML(bm, fileName, fp, groupingNode, max_co_sp_id, "Number of companion species for this fished species", "", XML_TYPE_INTEGER,"1");        
+
+        // Old verion when had fixed limit to the number of fishable spp
+        // Parse_File( bm, fp, fileName, groupingNode, "CompanionSpecies", "^co_sp_[A-Z]{2,3}", "Identity of companions in companion TAC - for all entries must have as many entries as for max_co_sp. \nIf there are not enough (or any) companions then for all extra entries enter companion as -1. For those WITH companions entries to the ID numbers of the companion then enter -1 to fill up the rest of the array. \nFor example if max_co_sp = 2 and the companions for FXX were FPS and FVV \nco_sp_FXX    2\n2 4", "", XML_TYPE_INTEGERARRAY, -1, TRUE, Create_Fished_Species_XMLNodes, Fix_Not_Fished_Species_Last_XMLFunction);
+        Parse_File( bm, fp, fileName, groupingNode, "CompanionSpecies", "^co_sp_[A-Z]{2,3}", "Identity of companions in companion TAC - for all entries must have as many entries as for max_co_sp. \nIf there are not enough (or any) companions then for all extra entries enter companion as -1. For those WITH companions entries to the ID numbers of the companion then enter -1 to fill up the rest of the array. \nFor example if max_co_sp = 2 and the companions for FXX were FPS and FVV \nco_sp_FXX    2\n2 4", "", XML_TYPE_INTEGERARRAY, -1, TRUE, Create_Fished_Species_XMLNodes, Species_Last_XMLFunction);
+
+
+        Create_Species_ParamXML(bm, fileName, fp, groupingNode, coType_id, "Type of companion TAC (0 = weakest link dictates quota, 1 = strongest link dictates quota)", "", XML_TYPE_BOOLEAN,"1");
+        
+        Parse_File(bm, fp, fileName, groupingNode, "co_sp_catch", "^[A-Z]{2,3}_co_sp_catch[1-9]{1,2}","Ratio of catch of companions in companion TAC - for all entries must have as many entries as there are fisheries. \nOne vctor is required per companion species.", "", XML_TYPE_FLOATARRAY, bm->K_num_fisheries, TRUE, Init_Co_Sp_CatchXML, Co_Sp_CatchXMLFunction);
+
+    }
+
 
 }
 

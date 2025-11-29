@@ -40,7 +40,8 @@ typedef enum {
 	ATLANTIS_COHORT_ATTRIBUTE,			/* Attribute where there is a value per cohort */
 	ATLANTIS_SEX_ATTRIBUTE,			    /* Attribute where there is a value per sex */
 	ATLANTIS_FISHERY_ATTRIBUTE,			/* Attribute associated with a fishery */
-	ATLANTIS_FISHERY_GROUP_ATTRIBUTE	/* Attribute where there is a value per fishery and per group */
+	ATLANTIS_FISHERY_GROUP_ATTRIBUTE,	/* Attribute where there is a value per fishery and per group */
+    ATLANTIS_COMPANION_ATTRIBUTE        /* Attribute associated with companion TACs */
 } AtlantisXMLObjectType;
 
 typedef enum {
@@ -135,7 +136,7 @@ typedef struct {
 	ATL_SPECIES_PARAM_TYPES paramType;	/* The ATL_SPECIES_PARAM_TYPES for this parameter. This is used to define which groups a value should be read in for */
 } SpeciesParamStruct;
 
-#define NUM_ATLANTIS_NODE_TYPES 10
+#define NUM_ATLANTIS_NODE_TYPES 11
 extern char AtlantisXMLObjectNAMES[NUM_ATLANTIS_NODE_TYPES][3][100];
 extern char AtlantisXMLAttributeTypeStrings[9][100];
 

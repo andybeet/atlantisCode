@@ -97,7 +97,8 @@ extern int verbose; /** \var If true then detailed debugging information is writ
 
 /* Migration and reproduction arrays */
 
-extern int **recover_help, **starve_vert, **nSTOCK, **shiftVERTON;
+extern int **recover_help, **starve_vert, **nSTOCK, **shiftVERTON, **prey_counted, *mig_returners, *active_den, *not_finished, *ngene_done, *stock_done;
+//extern int *mig_status;
 
 /* Population arrays */
 
@@ -106,18 +107,25 @@ extern double ****readinpopratio, ****newden, ****recVERTpopratio,
 		***BEDchange, ***Vchange, ***pSTOCK, ***initVERTinfo, ***cysts,
 		***VERTinfo, **sumSTOCK, **Tchange, **roc, **spSTOCKprop,
 		*sizeMinMax, **stock_prop, **recSTOCK, **totden, **recruit_vdistrib,
-		**tempdistrib, **VERTabund_check, ***totrecruit,
-        **Schange, **tot_yoy, **KDENR,
-		*recover_help_set, *BED_scale, *adults_spawning, **step1distrib,
+		**tempdistrib, **VERTabund_check, ***totrecruit, **totden_check, 
+        **Schange, **tot_yoy, **KDENR, *lostden_zero, *adults_spawning,
+		*recover_help_set, *BED_scale, **step1distrib,
 		***PREYinfo, ***GRAZEinfo, ***EATINGinfo, ***FEEDinfo, **PHchange,
-		**CATCHEATINGinfo, **CATCHGRAZEinfo, **SUPPdistrib;
+		**CATCHEATINGinfo, **CATCHGRAZEinfo, **SUPPdistrib, **boxden, ****currentden,
+        **leftden, *newden_sum, ***preyamt, *totad, *totboxden, *totroc, *yoy, *totsum,
+        *totksum, *tot_new_mat, *coming_SPden, *numbers_entering,
+        *numbers_already_present;
+
+extern double *initialIceBiomass, *initialLandBiomass, *initialBiomass,
+        *initialSedBiomass, *initialEpiBiomass, *initialWaterBiomass;
 
 extern int maxMortChange;
 extern int ***numMortChanges;
-extern int **counted;
 extern int *tsRecruitsid;
 
 extern double *****LinearMortChange;
+
+extern BoxLayerValues *boxLayerInfo;
 
 extern int *Fluxflag; /* Flag vector for diagonostic tracers, 1=yes, 0=no */
 extern int *Tolflag; /* Flag vector for tolerance checking variables, 1=yes, 0=no*/

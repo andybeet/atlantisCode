@@ -19,7 +19,6 @@ double k_pattern;
 double k_patches;
 double k_mismatch;
 
-double ***selectivity;
 double ***FFCDR;
 double ***SELchange;
 double ***Pchange;

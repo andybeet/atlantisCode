@@ -185,7 +185,7 @@ void readBMTracerInfo(int fid, char *fileName, MSEBoxModel *bm) {
 	int      t_len;    /* global attribute length */
 
 	if (verbose > 1)
-		fprintf(stderr, "Entering readBMTracerInfo\n");
+        printf( "Entering readBMTracerInfo\n");
 
 	/* Set netCDF library error handling */
 	ncopts = NC_VERBOSE | NC_FATAL;
@@ -260,7 +260,7 @@ void readBMTracerInfo(int fid, char *fileName, MSEBoxModel *bm) {
 		quit("readBMTracerInfo: No tracers in file\n");
 
 	if (verbose > 1)
-		fprintf(stderr, "readBMTracerInfo: %ld tracers in file\n", n);
+        printf( "readBMTracerInfo: %ld tracers in file\n", n);
 
 	/* Allocate space for tracer info */
 	if ((bm->tinfo = (TracerInfo *) malloc((size_t)n * sizeof(TracerInfo))) == NULL)
@@ -708,6 +708,8 @@ void readBMTracerData(int fid, int dump, MSEBoxModel *bm) {
 				for (b = 0; b < bm->nbox; b++) {
 					for (k = 0; k < bm->wcnz; k++) {
 						val[b][k] *= bm->init_scalar[this_sp];
+                        
+                        //fprintf(bm->logFile, "readBMTracerData - box: %d, layer: %d %s (%s) scaled by %e\n", b, k, bm->tinfo[i].name, FunctGroupArray[this_sp].groupCode, bm->init_scalar[this_sp]);
 					}
                     for (k = 0; k < bm->sednz; k++) {
                         val[b][k + bm->wcnz] *= bm->init_scalar[this_sp];
@@ -723,8 +725,10 @@ void readBMTracerData(int fid, int dump, MSEBoxModel *bm) {
 			for (k = 0; k < bm->wcnz; k++) {
 				bm->wctr[b][k][i] = (double) val[b][k];
 				if (!(_finite(bm->wctr[b][k][i]))) {
-					quit("readBMTracerData - box: %d, layer: %d %s (%d) localpool set to: %e.\n", b, k, bm->tinfo[i].name, i, bm->wctr[b][k][i]);
+					quit("readBMTracerData - box: %d, layer: %d %s (%d) localpool set to: %e\n", b, k, bm->tinfo[i].name, i, bm->wctr[b][k][i]);
 				}
+                
+                //fprintf(bm->logFile, "readBMTracerData - box: %d, layer: %d %s (%d) localpool set to: %e (val %f)\n", b, k, bm->tinfo[i].name, i, bm->wctr[b][k][i], val[b][k]);
 			}
 		}
 

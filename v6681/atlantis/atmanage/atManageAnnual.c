@@ -233,9 +233,9 @@ void Annual_Effort_Scale(MSEBoxModel *bm, FILE *llogfp) {
  *	knowledge in management
  */
 void Make_Mgmt_Decisions(MSEBoxModel *bm, FILE *llogfp) {
-	int sp, nf, flag_sp, co_sp, co_sp2, co_TYPE, dont_scale, dont_scale2, do_assess, flagrecfish, in_quota, bim;
-	double totTAC, FC_ratio, FC2_ratio, spA_TAC, spB_TAC = 0, spC_TAC = 0, expect_spB = 0, expect_spC = 0, avg_DAS, num_DAS;
-	double spTotCumCatch, co_sp_TotCumCatch, co_sp2_TotCumCatch;
+	int sp, nf, flag_sp, co_sp, co_sp2, co_TYPE, dont_scale2, do_assess, flagrecfish, in_quota, bim;
+	double totTAC, FC2_ratio, spA_TAC, spC_TAC = 0, expect_spC = 0, avg_DAS, num_DAS;
+	double spTotCumCatch, co_sp2_TotCumCatch;
 	int year = (int)ceil(bm->dayt / 365);
     
     fprintf(llogfp,"Time: %e year %d\n", bm->dayt, year);
@@ -287,32 +287,28 @@ void Make_Mgmt_Decisions(MSEBoxModel *bm, FILE *llogfp) {
 	}
 
 	/* Do assessments */
-    // Call PGMSY first as does own species assessments - so don't redo those species below
-    if (bm->PGMSY_on) {
-        Call_PGMSY(bm, year, llogfp);
-    }
-    
 	for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
-        if ((int)(bm->RBCestimation.RBCspeciesParam[sp][MultispAssessType_id]) > SingleSpOnly) {
-            // Do nothing as covered in multispecies call - PGMSY or otherwise
-        } else {
-            // Under single species assessments
-            if((bm->UsingRAssess == 1) && (FunctGroupArray[sp].isTAC > 1)) {
+        // Under single species assessments - for single species only or PGMSY
+        if((bm->UsingRAssess == 1) && (FunctGroupArray[sp].isTAC > 1)) {
 #ifdef RASSESS_LINK_ENABLED
-                Do_RAssess(bm, sp, year, llogfp);
+            Do_RAssess(bm, sp, year, llogfp);
 #else
-                quit("How get here as R link not active so set UsingRAssess to 0\n");
+            quit("How get here as R link not active so set UsingRAssess to 0\n");
 #endif
-            } else if(bm->useRBCTiers) {
-                CallTierAssessment(bm, sp, year, llogfp);
-            } else {
-                AMS_Tiered_Assessment(bm, sp, llogfp);
-            }
+        } else if(bm->useRBCTiers) {
+            CallTierAssessment(bm, sp, year, llogfp);
+        } else {
+            AMS_Tiered_Assessment(bm, sp, llogfp);
         }
 	}
-    
+
+    fprintf(bm->logFile, "Time: %e year: %d Getting read to do DoMultiStockAssessment as useMultispAssess: %d\n", bm->dayt, year, bm->useMultispAssess);
+
     /* Do multispecies assessments if needed */
     if (bm->useMultispAssess) {
+        if (bm->PGMSY_on) {
+            Call_PGMSY(bm, year, llogfp);
+        }
         DoMultiStockAssessment(bm, year, llogfp);
     }
 
@@ -320,159 +316,95 @@ void Make_Mgmt_Decisions(MSEBoxModel *bm, FILE *llogfp) {
 	for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
 		if (FunctGroupArray[sp].isFished == TRUE) {
 
-			/* If only resetting Fs skip ahead now */
+            /* If only resetting Fs skip ahead now */
 			if (FunctGroupArray[sp].speciesParams[flagFonly_id])
 				continue;
-
-			co_sp = (int) (FunctGroupArray[sp].co_sp[0]);
-			co_sp2 = (int) (FunctGroupArray[sp].co_sp[1]);
             
-            if ((bm->K_max_co_sp > 2) && bm->newmonth)
-                warn("Only first 2 compantions species being considered\n");
+            co_TYPE = (int) (FunctGroupArray[sp].speciesParams[coType_id]);
+            spTotCumCatch = Harvest_Get_TotCumCatch(sp, nf, bm->thisyear);
+
+            for (co_sp = 0; co_sp < FunctGroupArray[sp].speciesParams[max_co_sp_id]; co_sp++ ) {
+                co_sp2 = FunctGroupArray[sp].co_sp[co_sp];
             
-			co_TYPE = (int) (FunctGroupArray[sp].speciesParams[coType_id]);
+                /* If neither of the companion groups is fished then do nothing */
+                if ((co_sp2 == -1 || FunctGroupArray[co_sp2].isFished == FALSE))
+                    continue;
 
-			/* If neither of the companion groups is fished then do nothing */
-			if ((co_sp == -1 || FunctGroupArray[co_sp].isFished == FALSE) && (co_sp2 == -1 || FunctGroupArray[co_sp2].isFished == FALSE))
-				continue;
+                if (co_sp2 > 0) {
+                    fprintf(llogfp, "Time: %e, looking at %s vs co_sp: %s, co_sp2: %s, flagdyn_coupdate: %d\n", bm->dayt, FunctGroupArray[sp].groupCode, FunctGroupArray[co_sp].groupCode, FunctGroupArray[co_sp2].groupCode, bm->flagdyn_coupdate);
+                } else {
+                    fprintf(llogfp, "Time: %e, looking at %s vs co_sp: %s, flagdyn_coupdate: %d\n", bm->dayt, FunctGroupArray[sp].groupCode, FunctGroupArray[co_sp].groupCode, bm->flagdyn_coupdate);
+                }
 
-			//			if((co_sp != Not_fished_id) || (co_sp2 != Not_fished_id)){
-			//				/* Do nothing as want to continue */
-			//			} else {
-			//				/* No companions so skip */
-			//				continue;
-			//			}
-			if (co_sp2 > 0) {
-				fprintf(llogfp, "Time: %e, looking at %s vs co_sp: %s, co_sp2: %s, flagdyn_coupdate: %d\n", bm->dayt, FunctGroupArray[sp].groupCode,
-						FunctGroupArray[co_sp].groupCode, FunctGroupArray[co_sp2].groupCode, bm->flagdyn_coupdate);
+                for (nf = 0; nf < bm->K_num_fisheries; nf++) {
 
-			} else {
-				fprintf(llogfp, "Time: %e, looking at %s vs co_sp: %s, flagdyn_coupdate: %d\n", bm->dayt, FunctGroupArray[sp].groupCode,
-						FunctGroupArray[co_sp].groupCode, bm->flagdyn_coupdate);
-			}
+                    /* Only change management in fisheries where management active */
+                    if (bm->FISHERYprms[nf][manage_on_id] < 1)
+                        continue;
 
-			for (nf = 0; nf < bm->K_num_fisheries; nf++) {
+                    co_sp2_TotCumCatch = 0.0;
+                    if (bm->flagdyn_coupdate) {
+                        /* Update catch ratios */
+                        if (co_sp2 != -1 && FunctGroupArray[co_sp2].isFished == TRUE) {
+                            co_sp2_TotCumCatch = Harvest_Get_TotCumCatch(co_sp2, nf, bm->thisyear);
+                            FC2_ratio = co_sp2_TotCumCatch / (spTotCumCatch + small_num);
+                        } else {
+                            FC2_ratio = 1.0;
+                        }
+                    } else {
+                        /* Always use initial (read-in) catch ratios */
+                        FC2_ratio = FunctGroupArray[sp].co_sp_catch[nf][co_sp2];
+                    }
+                    spA_TAC = bm->TACamt[sp][nf][now_id];
 
-				/* Only change management in fisheries where management active */
-				if (bm->FISHERYprms[nf][manage_on_id] < 1)
-					continue;
+                    /* Cope with zero catches when quota still available */
+                    if ((spTotCumCatch == 0) && spA_TAC) {
+                        FC2_ratio = max(1.0, FunctGroupArray[sp].co_sp_catch[nf][co_sp2]);
+                    }
 
-				spTotCumCatch = Harvest_Get_TotCumCatch(sp, nf, bm->thisyear);
-				co_sp_TotCumCatch = 0.0;
-				co_sp2_TotCumCatch = 0.0;
+                    if (co_sp2 != -1 && FunctGroupArray[co_sp2].isFished == TRUE) {
+                        spC_TAC = bm->TACamt[co_sp2][nf][now_id];
+                        expect_spC = FC2_ratio * spA_TAC; // What expected TAC of companion to A should be
+                        dont_scale2 = 0;
 
-				if (bm->flagdyn_coupdate) {
-					/* Update catch ratios */
-					if (co_sp != -1 && FunctGroupArray[co_sp].isFished == TRUE) {
-						co_sp_TotCumCatch = Harvest_Get_TotCumCatch(co_sp, nf, bm->thisyear);
-						FC_ratio = co_sp_TotCumCatch / (spTotCumCatch + small_num);
-					} else
-						FC_ratio = 1.0;
-					if (co_sp2 != -1 && FunctGroupArray[co_sp2].isFished == TRUE) {
-						co_sp2_TotCumCatch = Harvest_Get_TotCumCatch(co_sp2, nf, bm->thisyear);
-						FC2_ratio = co_sp2_TotCumCatch / (spTotCumCatch + small_num);
-					} else
-						FC2_ratio = 1.0;
-				} else {
-					/* Always use initial (read-in) catch ratios */
-					FC_ratio = bm->SP_FISHERYprms[sp][nf][co_sp_catch_id];
-					FC2_ratio = bm->SP_FISHERYprms[sp][nf][co_sp_catch2_id];
-				}
-				spA_TAC = bm->TACamt[sp][nf][now_id];
+                        /* For those cases where there is no actual catch despite wanting quota don't play with the TACs */
+                        if (!co_sp2_TotCumCatch && spC_TAC) {
+                            dont_scale2 = 1;
+                        }
+                    } else {
+                        dont_scale2 = 1;
+                    }
 
-				/*
-				 if((nf == dtrawlBMS_id) && ((co_sp == FPO_id) || (co_sp2 == FPO_id))){
-				 fprintf(llogfp, "Time: %e, %s, FC_ratio: %e, FC2_ratio: %e, spA_TAC: %e\n", bm->dayt, FisheryArray[nf].fisheryCode, FC_ratio, FC2_ratio, spA_TAC);
-				 fprintf(llogfp, "TotCumCatch%s: %e, TotCumCatch%s: %e, TotCumCatch%s: %e, co_sp_catch: %e, co_sp_Catch2: %e\n",
-				 FunctGroupArray[sp].groupCode, spTotCumCatch, FunctGroupArray[co_sp].groupCode, co_sp_TotCumCatch], FunctGroupArray[co_sp2].groupCode, co_sp2_TotCumCatch, bm->SP_FISHERYprms[sp][nf][co_sp_catch_id], bm->SP_FISHERYprms[sp][nf][co_sp_catch2_id]);
-				 }
-				 */
+                    /* Reset TACs dependent on TAC of companion group */
+                    switch (co_TYPE) {
+                        case Weakest_Link: /* Set TAC based on weakest link in the pair */
+                            if (!dont_scale2 && (spC_TAC > expect_spC)) {
+                                bm->TACamt[co_sp2][nf][now_id] = expect_spC;
+                                bm->TAC_trigger[nf][triggered_scalar_id] *= expect_spC / (spC_TAC + small_num);
 
-				/* Cope with zero catches when quota still available */
-				if ((spTotCumCatch == 0) && spA_TAC) {
-					FC_ratio = max(1.0, bm->SP_FISHERYprms[sp][nf][co_sp_catch_id]);
-					FC2_ratio = max(1.0, bm->SP_FISHERYprms[sp][nf][co_sp_catch2_id]);
-				}
+                                fprintf(llogfp, "Time: %e, TAC for %s in %s was changed by %e (WLtrig_scalar: %e, expect_spB: %e, spC_Tac: %e) to %e\n", bm->dayt, FunctGroupArray[co_sp2].groupCode, FisheryArray[nf].fisheryCode, expect_spC / (spC_TAC + small_num), bm->TAC_trigger[nf][triggered_scalar_id], expect_spC, spC_TAC, bm->TACamt[co_sp2][nf][now_id]);
+                            }
+                            break;
+                        case Strongest_link: /* Set TAC based on strongest link in the pair */
+                            if (!dont_scale2 && (spC_TAC < expect_spC)) {
+                                bm->TACamt[co_sp2][nf][now_id] = expect_spC;
+                                bm->TAC_trigger[nf][triggered_scalar_id] *= expect_spC / (spC_TAC + small_num);
 
-				if (co_sp != -1 && FunctGroupArray[co_sp].isFished == TRUE) { // co_sp != Not_fished_id){
-					spB_TAC = bm->TACamt[co_sp][nf][now_id];
-					expect_spB = FC_ratio * spA_TAC; // What expected TAC of companion to A should be
-					dont_scale = 0;
+                                fprintf(llogfp, "Time: %e, TAC for %s in %s was changed by %e (SLtrig_scalar: %e, expect_spB: %e, spC_Tac: %e) to %e\n", bm->dayt, FunctGroupArray[co_sp2].groupCode, FisheryArray[nf].fisheryCode, expect_spC / (spC_TAC + small_num), bm->TAC_trigger[nf][triggered_scalar_id], expect_spC, spC_TAC, bm->TACamt[co_sp2][nf][now_id]);
+                            }
+                            break;
+                        default:
+                            quit("No such companion TAC option as yet. Must chose either weakest (0) or strongest (1) link\n");
+                            break;
+                    }
 
-					/* For those cases where there is no actual catch despite woning quota don't play with the TACs */
-					if (!co_sp_TotCumCatch && spB_TAC)
-						dont_scale = 1;
-				} else
-					dont_scale = 1;
-
-				if (co_sp2 != -1 && FunctGroupArray[co_sp2].isFished == TRUE) { //co_sp2 != Not_fished_id){
-					spC_TAC = bm->TACamt[co_sp2][nf][now_id];
-					expect_spC = FC2_ratio * spA_TAC; // What expected TAC of companion to A should be
-					dont_scale2 = 0;
-
-					/* For those cases where there is no actual catch despite woning quota don't play with the TACs */
-					if (!co_sp2_TotCumCatch && spC_TAC)
-						dont_scale2 = 1;
-				} else
-					dont_scale2 = 1;
-
-				/*
-				 if((nf == dtrawlBMS_id) && ((co_sp == FPO_id) || (co_sp2 == FPO_id))){
-				 fprintf(llogfp,"Time: %e, spB_TAC: %e, expect_spB: %e, dont_scale: %d, spC_TAC: %e, expect_spC: %e, dont_scale2: %d\n",
-				 bm->dayt, spB_TAC, expect_spB, dont_scale, spC_TAC, expect_spC, dont_scale2);
-				 }
-				 */
-
-				/* Reset TACs dependent on TAC of companion group */
-				switch (co_TYPE) {
-				case Weakest_Link: /* Set TAC based on weakest link in the pair */
-					if (!dont_scale && (spB_TAC > expect_spB)) {
-						bm->TACamt[co_sp][nf][now_id] = expect_spB;
-						bm->TAC_trigger[nf][triggered_scalar_id] *= expect_spB / (spB_TAC + small_num);
-
-						fprintf(llogfp, "Time: %e, TAC for %s in %s was changed by %e (WLtrig_scalar: %e, expect_spB: %e, spB_Tac: %e) to %e\n", bm->dayt,
-								FunctGroupArray[co_sp].groupCode, FisheryArray[nf].fisheryCode, expect_spB / (spB_TAC + small_num),
-								bm->TAC_trigger[nf][triggered_scalar_id], expect_spB, spB_TAC, bm->TACamt[co_sp][nf][now_id]);
-
-					}
-					if (!dont_scale2 && (spC_TAC > expect_spC)) {
-						bm->TACamt[co_sp2][nf][now_id] = expect_spC;
-						bm->TAC_trigger[nf][triggered_scalar_id] *= expect_spC / (spC_TAC + small_num);
-
-						fprintf(llogfp, "Time: %e, TAC for %s in %s was changed by %e (WLtrig_scalar: %e, expect_spB: %e, spC_Tac: %e) to %e\n", bm->dayt,
-								FunctGroupArray[co_sp2].groupCode, FisheryArray[nf].fisheryCode, expect_spC / (spC_TAC + small_num),
-								bm->TAC_trigger[nf][triggered_scalar_id], expect_spC, spC_TAC, bm->TACamt[co_sp2][nf][now_id]);
-					}
-					break;
-				case Strongest_link: /* Set TAC based on strongest link in the pair */
-					if (!dont_scale && (spB_TAC < expect_spB)) {
-						bm->TACamt[co_sp][nf][now_id] = expect_spB;
-						bm->TAC_trigger[nf][triggered_scalar_id] *= expect_spB / (spB_TAC + small_num);
-
-						fprintf(llogfp, "Time: %e, TAC for %s in %s was changed by %e (SLtrig_scalar: %e, expect_spB: %e, spB_Tac: %e) to %e\n", bm->dayt,
-								FunctGroupArray[co_sp].groupCode, FisheryArray[nf].fisheryCode, expect_spB / (spB_TAC + small_num),
-								bm->TAC_trigger[nf][triggered_scalar_id], expect_spB, spB_TAC, bm->TACamt[co_sp][nf][now_id]);
-					}
-					if (!dont_scale2 && (spC_TAC < expect_spC)) {
-						bm->TACamt[co_sp2][nf][now_id] = expect_spC;
-						bm->TAC_trigger[nf][triggered_scalar_id] *= expect_spC / (spC_TAC + small_num);
-
-						fprintf(llogfp, "Time: %e, TAC for %s in %s was changed by %e (SLtrig_scalar: %e, expect_spB: %e, spC_Tac: %e) to %e\n", bm->dayt,
-								FunctGroupArray[co_sp2].groupCode, FisheryArray[nf].fisheryCode, expect_spC / (spC_TAC + small_num),
-								bm->TAC_trigger[nf][triggered_scalar_id], expect_spC, spC_TAC, bm->TACamt[co_sp2][nf][now_id]);
-					}
-					break;
-				default:
-					quit("No such companion TAC option as yet. Must chose either weakest (0) or strongest (1) link\n");
-					break;
-				}
-
-				/* Output simple list of new TACs */
-
-				//if ((!dont_scale) || (!dont_scale2))
-				//				if ((!dont_scale) && (!dont_scale2))
-				//					fprintf(llogfp, "Time: %e, sp %s in %s coTAC = %e (%s-TAC: %e, %s-TAC: %e)\n", bm->dayt, FunctGroupArray[sp].groupCode, FisheryArray[nf].fisheryCode,
-				//							bm->TACamt[sp][nf][now_id], FunctGroupArray[co_sp].groupCode, bm->TACamt[co_sp][nf][now_id], FunctGroupArray[co_sp2].groupCode, bm->TACamt[co_sp2][nf][now_id]);
+                    /* Output simple list of new TACs */
+                    /*
+                     if (!dont_scale2) {
+                        fprintf(llogfp, "Time: %e, sp %s in %s coTAC = %e (%s-TAC: %e)\n", bm->dayt, FunctGroupArray[sp].groupCode, FisheryArray[nf].fisheryCode, bm->TACamt[sp][nf][now_id], FunctGroupArray[co_sp2].groupCode, bm->TACamt[co_sp2][nf][now_id]);
+                     }
+                     */
+                }
 			}
 		}
 	}
@@ -562,7 +494,9 @@ void Make_Mgmt_Decisions(MSEBoxModel *bm, FILE *llogfp) {
 						/* Don't include recfishing in quota allocation for now (as often not quota-ed)
 						 FIX - may have to change this if recfishing becomes quota allocated group
 						 */
-						totTAC += bm->TACamt[sp][nf][now_id];
+                        if(!FunctGroupArray[sp].isTAC || (bm->TACamt[sp][nf][now_id] < no_quota)) {
+                            totTAC += bm->TACamt[sp][nf][now_id];
+                        }
 						fprintf(llogfp, " %s=%e", FisheryArray[nf].fisheryCode, bm->TACamt[sp][nf][now_id]);
 					}
 				}
@@ -874,7 +808,9 @@ void AMS_Tiered_Assessment(MSEBoxModel *bm, int sp, FILE *llogfp) {
 					/* Also update annual reporting and storage of old quotas */
 					bm->TACamt[sp][nf][old_id] = bm->TACamt[sp][nf][now_id];
 
-					totTAC += bm->TACamt[sp][nf][now_id];
+                    if(!FunctGroupArray[sp].isTAC || (bm->TACamt[sp][nf][now_id] < no_quota)) {
+                        totTAC += bm->TACamt[sp][nf][now_id];
+                    }
 				}
 				if (FunctGroupArray[sp].speciesParams[sp_concern_id]) {
 					totcatch += Harvest_Get_TotCumCatch(sp, nf, bm->thisyear);//bm->TotCumCatch[sp][nf][bm->thisyear];
@@ -1289,7 +1225,7 @@ void Guild_Frescale (MSEBoxModel *bm, FILE *llogfp, int sp) {
     double *calcF_sp = Util_Alloc_Init_1D_Double(bm->K_max_co_sp + 1, 0.0); // The +1 is for the primary species
     double *counter_sp = Util_Alloc_Init_1D_Double(bm->K_max_co_sp + 1, 0.0); // The +1 is for the primary species
     double *Fcurr_sp = Util_Alloc_Init_1D_Double(bm->K_max_co_sp + 1, 0.0); // The +1 is for the primary species
-    double calcM, calcF, counter, Fcurr;
+    double counter, Fcurr;
 
     int tier = (int) (FunctGroupArray[sp].speciesParams[tier_id]);
     int er_case = (int) (FunctGroupArray[sp].speciesParams[estError_id]);
@@ -1306,7 +1242,7 @@ void Guild_Frescale (MSEBoxModel *bm, FILE *llogfp, int sp) {
 
     fprintf(llogfp, "Time: %e doing %s with tier %d\n", bm->dayt, FunctGroupArray[sp].groupCode, tier);
 
-    for (groupIndex = 0; groupIndex < bm->K_max_co_sp; groupIndex++) {
+    for (groupIndex = 0; groupIndex < FunctGroupArray[sp].speciesParams[max_co_sp_id]; groupIndex++ ) {
         othersp = FunctGroupArray[sp].co_sp[groupIndex];
     
         Braw += bm->totfishpop[othersp] * bm->X_CN * mg_2_tonne;
@@ -1320,7 +1256,7 @@ void Guild_Frescale (MSEBoxModel *bm, FILE *llogfp, int sp) {
     FrefH = FunctGroupArray[sp].speciesParams[FrefH_id];
     
     /** Using perfect knowledge way of determining M and F - averaging over the species in the guild */
-    for (groupIndex = 0; groupIndex < bm->K_max_co_sp + 1; groupIndex++) {
+    for (groupIndex = 0; groupIndex < FunctGroupArray[sp].speciesParams[max_co_sp_id]; groupIndex++ ) {
         if (groupIndex < bm->K_max_co_sp) {
             othersp = FunctGroupArray[sp].co_sp[groupIndex];
         } else {
@@ -1410,7 +1346,8 @@ void Guild_Frescale (MSEBoxModel *bm, FILE *llogfp, int sp) {
     
     
     /* Apply rescaling to each species in the guild */
-    for (groupIndex = 0; groupIndex < bm->K_max_co_sp + 1; groupIndex++) {
+    for (groupIndex = 0; groupIndex < FunctGroupArray[sp].speciesParams[max_co_sp_id]; groupIndex++ ) {
+
         if (groupIndex < bm->K_max_co_sp) {
             othersp = FunctGroupArray[sp].co_sp[groupIndex];
         } else {
@@ -1475,7 +1412,7 @@ void Check_Ecosystem_F_Harvest_Control_Rule(MSEBoxModel *bm, FILE *llogfp){
 
 						// If species of concern less than threshold value down scale effort of relevant fisheries
 						if(fishnowpop < FC_thresh){
-							for(i=0; i<bm->K_max_co_sp; i++){
+                            for (i = 0; i < FunctGroupArray[sp].speciesParams[max_co_sp_id]; i++ ) {
 								co_sp = (int)(FunctGroupArray[sp].co_sp[i]);
                                 
                                 if ((co_sp < 0) || (co_sp > bm->K_num_tot_sp))

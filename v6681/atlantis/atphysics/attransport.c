@@ -63,7 +63,10 @@ void transportBM(MSEBoxModel *bm, double ***newwc, FILE *llogfp) {
 	double tleft = bm->dt;
 
 	if (verbose)
-		fprintf(stderr, "Entering transportBM\n");
+		printf("Entering transportBM\n");
+    
+    fflush(stdout);     /* in case stdout and stderr are the same so can track soem frees*/
+    fflush(stderr);
 
 	/* Initialise export file if necessary */
 	if (!bm->atPhysicsModule->expfp)
@@ -140,11 +143,12 @@ void transportBM(MSEBoxModel *bm, double ***newwc, FILE *llogfp) {
 				} else
 					startk = k;
 				if (dv > bp->volume[startk]) {
-					/* More water going out of box than was in it!! */
+					/* More water going out of box than was in it!! *
 					if (verbose > 1){
 						fprintf(stderr, "transport: Exchange %f greater than volume %f at box %d k = %d\n", dv, bp->volume[startk], b, startk);
 						//abort();
 					}
+					*/
 					/* Scale the exchanges to correct the problem. */
 					for (d = 0; d < bm->hd.dsize; d++) {
 						if (bm->hd.b[b][k][d] >= 0)
@@ -410,12 +414,20 @@ void transportBM(MSEBoxModel *bm, double ***newwc, FILE *llogfp) {
 		}
 	}
 	// fclose(expfp);
+    
+    //if(verbose)
+    //    printf("Leaving transport\n");
+    
+    fflush(stdout);     /* in case stdout and stderr are the same so can track soem frees*/
+    fflush(stderr);
 
 	/* Get more hydro data if necessary, so that hydro time
 	 * is updated appropriately
 	 */
 	if (bm->hd.tleft <= 0)
 		get_hydro(bm);
+    
+    return;
 
 }
 

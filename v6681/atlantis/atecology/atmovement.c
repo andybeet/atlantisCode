@@ -422,7 +422,7 @@ static void Get_Vert_Diet(MSEBoxModel *bm, double ***preyamt, int ij, int k, int
 	for (n = 0; n < FunctGroupArray[prey].numCohortsXnumGenes; n++) {
 
 		preystage = FunctGroupArray[prey].cohort_stage[n];
-		counted[prey][n] = 0;
+		prey_counted[prey][n] = 0;
 		/* Vertebrate numbers */
 		sn = FunctGroupArray[prey].structNTracers[n];
 		rn = FunctGroupArray[prey].resNTracers[n];
@@ -462,7 +462,7 @@ static void Get_Vert_Diet(MSEBoxModel *bm, double ***preyamt, int ij, int k, int
 		/* Vertebrate prey */
 		for (pred = 0; pred < bm->K_num_tot_sp; pred++) {
 			if (FunctGroupArray[pred].speciesParams[flag_id] == TRUE) {
-				if(!counted[prey][n]){
+				if(!prey_counted[prey][n]){
 					for(predstage = 0; predstage < FunctGroupArray[pred].numStages; predstage++){
 						if(bm->flag_olddiet){
 							preyavail = FunctGroupArray[pred].pSPEat[juv_id][prey][habitat];  // As only tested for the juvenile case originally - dumb decision!
@@ -482,13 +482,13 @@ static void Get_Vert_Diet(MSEBoxModel *bm, double ***preyamt, int ij, int k, int
 							}
 							if ((bm->boxes[ij].tr[k][sn] >= lower) && (boxLayerTracers[sn] <= upper)) {
 								preyamt[prey][ij][preystage] += (boxLayerTracers[sn] + boxLayerTracers[rn]) * boxLayerTracers[den];
-								counted[prey][n] = 1;
+								prey_counted[prey][n] = 1;
 							}
 
 							/**
 							if(bm->dayt > bm->checkstart){
 								fprintf(bm->logFile, "pred: %s ij: %d prey %s-%d counted: %d stage: %d sn = %.20e rn = %.20e den = %.20e preyamt[juv_id] = %.20e preyamt[adult_id] = %.20e\n",
-										FunctGroupArray[pred].groupCode, ij, FunctGroupArray[prey].groupCode, n, counted[prey][n], predstage, bm->boxes[ij].tr[k][sn], bm->boxes[ij].tr[k][rn],
+										FunctGroupArray[pred].groupCode, ij, FunctGroupArray[prey].groupCode, n, prey_counted[prey][n], predstage, bm->boxes[ij].tr[k][sn], bm->boxes[ij].tr[k][rn],
 										bm->boxes[ij].tr[k][den], preyamt[prey][ij][juv_id], preyamt[prey][ij][adult_id]);
 							}
 							**/
@@ -754,32 +754,22 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 	int maxij = bm->K_num_stocks_per_sp;
 	int overall_checkday = (int) (floor(bm->dayt));
 
-	double clear, E1_sp, spSpeed, this_HowFar, vertdistrib, mignum, mignum_actual, spawnmove = 1.0, totmig, midpoint, FSMG_grow, migtime, oldden, totdenom = 0, min_temp_sp, max_temp_sp, maxstock, min_spawntemp_sp, max_spawntemp_sp, temp_effect, finalmig, avgsn, avgrn, dynsn, dynrn, min_salt_sp, max_salt_sp, min_O2_sp, current_enviro, min_spawnsalt_sp, max_spawnsalt_sp, salt_effect, o2_effect, contract_sp, oldsn, oldrn, this_tot_biom, pH_scale, orig_newden, check_day, stagger_scalar, noise_effect, light_effect, K_salt_const_sp, K_o2_const_sp, numScalar_final, growth_period, den_diff;
+	double clear, E1_sp, spSpeed, this_HowFar, vertdistrib, mignum, mignum_actual, spawnmove = 1.0, totmig, midpoint, FSMG_grow, migtime, oldden, totdenom = 0, maxstock, min_spawntemp_sp, max_spawntemp_sp, temp_effect, finalmig, avgsn, avgrn, dynsn, dynrn, min_O2_sp, current_enviro, min_spawnsalt_sp, max_spawnsalt_sp, salt_effect, o2_effect, contract_sp, oldsn, oldrn, this_tot_biom, pH_scale, orig_newden, check_day, stagger_scalar, noise_effect, light_effect, K_salt_const_sp, K_o2_const_sp, numScalar_final, growth_period, den_diff;
     double numScalar, K_temp_const_sp = 0.0;
     // double step1, step2;  OLD WAY OF DOING AGE - DEPRECATE
     double ReturnPeriod;
     double IBoxProp;
 	int enviro_depend = 0, sp_enviro_depend = 0, check_done = 0, is_suitable = 0;
-	int **counted;
     int rij, rangeid, rocstage = -1, thiscase1, thiscase2, adstage, sp_Migrate_Years, stagger_return, agec;
     double nbox_spread, stepSN, stepRN, yoy_den, KWSR_sp, KWRR_sp;
 	int adbox, chkbox, kk;
 	double prop_range;
 	int prij, rrid;
-	double ***preyamt;
-	double **boxden;
-	double ****currentden;
-	double **leftden;
 	double sp_amt;
-	double *totboxden;
-	double *totroc;
 	double migProp;
 	double migtime2;
-	double *totad;
-	double *newden_sum;
 	double some_ice = 0.0, ice_effect;
     int do_debug2;
-    int *mig_returners = Util_Alloc_Init_1D_Int(bm->K_num_tot_sp, 0);
     
 	updated_already = 0;
 
@@ -788,7 +778,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 	else
 		do_debug = 0;
 
-	if (bm->flagtempdepend || bm->flagsaltdepend || bm->flagO2depend)
+	if (bm->flagtempdepend_move || bm->flagsaltdepend || bm->flagO2depend)
 		enviro_depend = 1;
 
 	mig_done = 0;
@@ -806,23 +796,26 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 	day_part = bm->flagday; // 1 = day time, 0 = night time
 
 	/* Initialise local arrays */
-	newden_sum = Util_Alloc_Init_1D_Double(bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
-	counted = Util_Alloc_Init_2D_Int(bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->K_num_tot_sp, 0);
-	totad = Util_Alloc_Init_1D_Double(bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
-	totboxden = Util_Alloc_Init_1D_Double(bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
-	Util_Init_2D_Double(bm->targetspbiom, bm->K_num_tot_sp, bm->nbox, 0.0);
-	Util_Init_2D_Double(totden, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
-	currentden = Util_Alloc_Init_4D_Double(bm->nbox, bm->wcnz, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->K_num_tot_sp, 0.0);
-	Util_Init_4D_Double(newden, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->wcnz, bm->nbox, 0.0);
-	Util_Init_3D_Double(VERTinfo, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, 3, 0.0);
-	Util_Init_3D_Double(init_stock_struct_prop, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->K_num_stocks_per_sp, 0.0);
+    Util_Init_2D_Double(boxden, bm->nbox, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
+    Util_Init_4D_Double(currentden, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->wcnz, bm->nbox, 0.0);
+    Util_Init_3D_Double(init_stock_struct_prop, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->K_num_stocks_per_sp, 0.0);
+    Util_Init_2D_Double(leftden, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
+    Util_Init_1D_Int(mig_returners, bm->K_num_tot_sp, 0);
+    Util_Init_4D_Double(newden, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->wcnz, bm->nbox, 0.0);
+    Util_Init_1D_Double(newden_sum, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
+    Util_Init_2D_Int(prey_counted, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0);
+    Util_Init_3D_Double(preyamt, bm->K_num_tot_sp, bm->nbox, 2, 0.0);
+    Util_Init_1D_Double(totad, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
+    Util_Init_1D_Double(totboxden, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
+    Util_Init_2D_Double(totden, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
+    Util_Init_2D_Double(totden_check, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
+    Util_Init_1D_Double(totroc, bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
+    Util_Init_3D_Double(VERTinfo, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, 3, 0.0);
+
+    Util_Init_2D_Double(bm->targetspbiom, bm->K_num_tot_sp, bm->nbox, 0.0);
 	Util_Init_3D_Double(bm->stock_struct_prop, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->K_num_stocks_per_sp, 0.0);
     Util_Init_3D_Double(bm->HomeRangeTotal, bm->K_num_tot_sp, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->K_num_homerange, 0.0);
-	preyamt = Util_Alloc_Init_3D_Double(2, bm->nbox, bm->K_num_tot_sp, 0.0);
-	boxden = Util_Alloc_Init_2D_Double(bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->nbox, 0.0);
-	leftden = Util_Alloc_Init_2D_Double(bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->K_num_tot_sp, 0.0);
-	totroc = Util_Alloc_Init_1D_Double(bm->K_num_max_cohort * bm->K_num_max_genetypes, 0.0);
-
+    
 	/* Determine tot numbers per cohort per species and total
 	 amount of each prey in each box of the bay. Will update the totden array. */
 	Calculate_Prey_Values(bm, preyamt, llogfp);
@@ -867,15 +860,17 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 	}
 
 	/**
-    if ((bm->which_check <= bm->K_num_tot_sp)){
-    	if (FunctGroupArray[bm->which_check].isVertebrate == TRUE) {
+    //sp = bm->which_check;
+    sp = 33;
+    if ((sp <= bm->K_num_tot_sp)){
+    	if (FunctGroupArray[sp].isVertebrate == TRUE) {
 			for (ij = 0; ij < bm->nbox; ij++) {
 				if (bm->boxes[ij].type != BOUNDARY) {
 					for (k = 0; k < bm->boxes[ij].nz; k++) {
-						for (n = 0; n < FunctGroupArray[bm->which_check].numCohortsXnumGenes; n++) {
-							den = FunctGroupArray[bm->which_check].NumsTracers[n];
+						for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
+							den = FunctGroupArray[sp].NumsTracers[n];
 
-                            fprintf(llogfp, "START Time: %e, %s-%d box%d-%d den: %e (vs totden: %e)\n", bm->dayt, FunctGroupArray[bm->which_check].groupCode, n, ij, k, bm->boxes[ij].tr[k][den], totden[bm->which_check][n]);
+                            fprintf(llogfp, "START Time: %e, %s-%d box%d-%d den: %e (vs totden: %e)\n", bm->dayt, FunctGroupArray[sp].groupCode, n, ij, k, bm->boxes[ij].tr[k][den], totden[sp][n]);
 						}
 					}
 				}
@@ -883,8 +878,11 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
     	}
 	}
 	**/
-
-	for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
+    
+    if (verbose > 0)
+        printf("Doing vertebrate movement\n");
+    
+    for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
         
         //fprintf(llogfp,"%s move0 starts with next_larvae set to %d\n", FunctGroupArray[sp].groupCode, EMBRYO[sp].next_larvae);
         //printf("%s move0 starts with next_larvae set to %d\n", FunctGroupArray[sp].groupCode, EMBRYO[sp].next_larvae);
@@ -989,10 +987,10 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
                     stock_id = (int) (MIGRATION[sp].returnstock[qid]) - 1;
                     ReturnPeriod = (double)(MIGRATION[sp].Return_Period[qid]);
 
-					/**
+                    /**
                     //if(do_debug2){
                     //if (sp == 33) || ((sp > 8) && (sp < 12))) {
-                    if (sp == 35) {
+                    if (sp == 33) {
                         fprintf(llogfp, "Time: %e, Species %s-%d qid: %d Return_Period = %d, Return_Now: %d (num_in_queue: %d, num_in_queue_done: %d) FinalMigBack: %d DEN: %e\n", bm->dayt, FunctGroupArray[sp].groupCode, n, qid, MIGRATION[sp].Return_Period[qid], MIGRATION[sp].Return_Now[qid], MIGRATION[sp].num_in_queue, MIGRATION[sp].num_in_queue_done, MIGRATION[sp].Return_Now[qid] + MIGRATION[sp].Return_Period[qid], MIGRATION[sp].DEN[n][qid]);
 					}
                     **/
@@ -1011,16 +1009,16 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 					/* Migrating species returning to the model */
 					if ((spmigrate && (MIGRATION[sp].Return_Period[qid] > 0)) && (bm->dayt >= MIGRATION[sp].Return_Now[qid]) && (bm->dayt < (MIGRATION[sp].Return_Now[qid] + MIGRATION[sp].Return_Period[qid])) && (bm->t / 86400.0 > 0.0) && (MIGRATION[sp].DEN[n][qid] > 0)) {  // Only bother doing it if any individuals to return
                         
-                        /**/
+                        /**
                         //if(do_debug2){
                         //if ((sp == 33) || ((sp > 8) && (sp < 12))) {
-                        if ((sp == 33) || (sp == 32)) {
+                        if (sp == 33) {
                              fprintf(llogfp,"Time: %e, %s-%d mig-%d returning MigBack: %d, MigPeriod: %d, FinalMigBack: %d original migDEN: %e\n",
 									bm->dayt, FunctGroupArray[sp].groupCode, stage, qid,
 									MIGRATION[sp].Return_Now[qid], MIGRATION[sp].Return_Period[qid],
 									MIGRATION[sp].Return_Now[qid]+MIGRATION[sp].Return_Period[qid], MIGRATION[sp].DEN[n][qid]);
 						}
-                        /**/
+                        **/
 
                         /* Update numbers for returning migrants and then update overall size,
 						 based on contributions from returning migrants */
@@ -1037,10 +1035,10 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
                         /**
 						//if(do_debug2){
                         //if ((sp == 33) || ((sp > 8) && (sp < 12))) {
-                        if (sp == 35) {
+                        if (sp == 33) {
                             fprintf(bm->logFile, "Time: %e, %s qid: %d migtime2 = %e, period = %d, migtime = %e, migrateReturn = %d, away = %d with original migDEN: %e stagger_scalar: %e num_stagger: %e\n", bm->dayt, FunctGroupArray[sp].groupCode, qid, migtime2, MIGRATION[sp].Return_Period[qid], migtime, MIGRATION[sp].Return_Now[qid], MIGRATION[sp].Leave_Now[qid], MIGRATION[sp].DEN[n][qid], stagger_scalar, (double)(MIGRATION[sp].num_stagger[qid]));
 						}
-                        **/
+                       **/
                         
                         mignum = MIGRATION[sp].DEN[n][qid] * migtime2;
                         
@@ -1062,7 +1060,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
                         /**
                         //if(do_debug2){
                         //if ((sp == 33) || ((sp > 8) && (sp < 12))) {
-                        if (sp == 35) {
+                        if (sp == 33) {
                             fprintf(bm->logFile,"Time: %e, %s-%d qid: %d totden: %e with mignum_actual: %e mignum: %e migtime2: %e survival: %e migDEN now: %e\n", bm->dayt, FunctGroupArray[sp].groupCode, n, qid,  totden[sp][n], mignum_actual, mignum, migtime2, MIGRATION[sp].survival[qid], MIGRATION[sp].DEN[n][qid]);
                         }
                         **/
@@ -1224,6 +1222,10 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 
     /* Movement of vertebrates */
 	for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
+        
+        if (verbose > 0)
+            printf("Doing movement for %s\n", FunctGroupArray[sp].groupCode);
+
         if (FunctGroupArray[sp].isVertebrate == TRUE) {
 
 			spmigrate = 0;
@@ -1263,8 +1265,8 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 			/* if a group doesn't move vertically or horizontally then skip */
 			if(FunctGroupArray[sp].isMobile == FALSE && FunctGroupArray[sp].sp_geo_move == FALSE)
 				continue;
-
-			/* Normalise proportion of total abundance in each stock */
+            
+            /* Normalise proportion of total abundance in each stock */
 			for (ij = 0; ij < maxij; ij++) {
 				for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
 					bm->stock_struct_prop[sp][n][ij] = init_stock_struct_prop[sp][n][ij] / (totden[sp][n] + small_num);
@@ -1279,19 +1281,16 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 				}
 			}
             
-			/* If non present (less than one individual present in entire system) then skip ahead */
+            /* If non present (less than one individual present in entire system) then skip ahead */
 			if (sp_amt < bm->min_dens) {
 				if (do_debug2 || (do_debug && (sp == bm->move_check)))
 					fprintf(llogfp, "No %s present so skipping ahead (%e)\n", FunctGroupArray[sp].groupCode, sp_amt);
 				continue;
 			}
-
-			for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
-				/* Initialise totnumber being distributed */
-				totboxden[n] = 0.0;
-			}
-
-			/* Note that this use of growth rate and clearance parameters is based only
+            
+            Util_Init_1D_Double(totboxden, (bm->K_num_max_cohort * bm->K_num_max_genetypes), 0.0);
+            
+            /* Note that this use of growth rate and clearance parameters is based only
 			 on the default Holling type feeding relation and on surface temperatures. This
 			 would need to change if other feeding types are used regularly and if depth related
 			 changes in feeding efficiency guiding feeding depths */
@@ -1300,20 +1299,23 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
             // Allow for vertical movement only - over-write movement case 
             if(FunctGroupArray[sp].sp_geo_move == FALSE)
                 sp_ddepend_move = sedentary_move;
-
-			age_mat = (int) (FunctGroupArray[sp].speciesParams[age_mat_id]);
+            
+            age_mat = (int) (FunctGroupArray[sp].speciesParams[age_mat_id]);
 			spSpeed = FunctGroupArray[sp].speciesParams[Speed_id];
-			min_temp_sp = FunctGroupArray[sp].speciesParams[min_move_temp_id];
-			max_temp_sp = FunctGroupArray[sp].speciesParams[max_move_temp_id];
 			min_spawntemp_sp = FunctGroupArray[sp].speciesParams[min_spawn_temp_id];
 			max_spawntemp_sp = FunctGroupArray[sp].speciesParams[max_spawn_temp_id];
-			min_salt_sp = FunctGroupArray[sp].speciesParams[min_move_salt_id];
-			max_salt_sp = FunctGroupArray[sp].speciesParams[max_move_salt_id];
 			min_spawnsalt_sp = FunctGroupArray[sp].speciesParams[min_spawn_salt_id];
 			max_spawnsalt_sp = FunctGroupArray[sp].speciesParams[max_spawn_salt_id];
 			min_O2_sp = FunctGroupArray[sp].speciesParams[min_O2_id];
 			temp_sensitive_sp = (int)(FunctGroupArray[sp].speciesParams[flagtempsensitive_id]);
 			salt_sensitive_sp = (int)(FunctGroupArray[sp].speciesParams[flagSaltSensitive_id]);
+            
+            if(!bm->flagtempdepend_move) { // Have turned off temperature dependent movement
+                if(temp_sensitive_sp && bm->newmonth) {
+                    warn("Ecology_Total_Verts_And_Migration: Time: %e Zeroing temperature sensitivity for movement of %s even though flagtempsensitive %d as flagtempdepend_move = %d\n", bm->dayt, FunctGroupArray[sp].groupCode, temp_sensitive_sp, bm->flagtempdepend_move);
+                }
+                temp_sensitive_sp = 0;
+            }
             
             if (FunctGroupArray[sp].numMoveEntries != 4) {
                 this_HowFar = FunctGroupArray[sp].HowFar;
@@ -1321,7 +1323,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
                 this_HowFar = bm->HowFar;
             }
 
-			/* Replicate old bec_dev results on existing models. We will remove this asap! */
+            /* Replicate old bec_dev results on existing models. We will remove this asap! */
 			if(bm->flag_replicated_old == FALSE){
 				if(salt_sensitive_sp || temp_sensitive_sp)
 					sp_enviro_depend = 1;
@@ -1329,27 +1331,25 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 					sp_enviro_depend = 0;
 			}
 
-			bearlive = (int) (FunctGroupArray[sp].speciesParams[flagbearlive_id]);
+            bearlive = (int) (FunctGroupArray[sp].speciesParams[flagbearlive_id]);
 			flagmother = (int) (FunctGroupArray[sp].speciesParams[flagmother_id]);
 			sp_feed_while_spawn = (int) (FunctGroupArray[sp].speciesParams[feed_while_spawn_id]);
 			flagchannel = (int) (FunctGroupArray[sp].speciesParams[flagchannel_id]);
 			spupdatemig = 0;
 			spmigrate = MIGRATION[sp].num_in_queue;
 
-			/* Make parameter adjustments due to acidification */
+            /* Make parameter adjustments due to acidification */
 			flagcontract_sp = (int)FunctGroupArray[sp].speciesParams[flagcontract_tol_id];
 			pH_scale = (FunctGroupArray[sp].pHcorr - 1.0);
 			if( flagcontract_sp  && (pH_scale > 0.0)) {
 				contract_sp = (int)FunctGroupArray[sp].speciesParams[contract_tol_id];
-				min_temp_sp += contract_sp * pH_scale;
-				max_temp_sp -= contract_sp * pH_scale;
 				min_spawntemp_sp += contract_sp * pH_scale;
 				max_spawntemp_sp -= contract_sp * pH_scale;
 			}
 
 			/* if this group moves vertically only then work out existing % in each box */
 			if(FunctGroupArray[sp].isMobile == TRUE && FunctGroupArray[sp].sp_geo_move == FALSE){
-				for (n = 0; n < FunctGroupArray[sp].numCohorts; n++) {
+				for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
 					den = FunctGroupArray[sp].NumsTracers[n];
 
 					/* Get details of feeding preferences */
@@ -1369,8 +1369,8 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 
 			/* For forage and density dependent movement determine ideal forage locations */
 			/* if this group is not vertically mobile then need the currentden for use in Get_Vertical_Distribution() */
-
-			if (sp_ddepend_move > perscribed_move || FunctGroupArray[sp].isMobile == FALSE) {
+            
+            if (sp_ddepend_move > perscribed_move || FunctGroupArray[sp].isMobile == FALSE) {
 
 				/* Get general parameter values for density- and food-dependent movement,
 				 cohort specific ones are dealt with below. Note that this use of growth rate
@@ -1523,7 +1523,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 				}
 			}
             
-			/* If using 'sticky' density dependent movement start by determining
+            /* If using 'sticky' density dependent movement start by determining
 			 leftden and reinitialising totboxden */
 			if (sp_ddepend_move == sticky_ddepend) {
 				for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
@@ -1960,7 +1960,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 				}
 			}
             
-			/* Do final summation (in all cases) */
+            /* Do final summation (in all cases) */
 			for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
 				for (ij = 0; ij < bm->nbox; ij++) {
 					if (bm->boxes[ij].type == LAND) {
@@ -2250,7 +2250,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 						Larval_Dispersal(bm, sp, llogfp);
 				}
 			}
-
+            
             /* Initialise the sum */
 			for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
 				for (k = 0; k < FunctGroupArray[sp].numStocks; k++) {
@@ -2275,8 +2275,8 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 			avgsn = 0;
 			avgrn = 0;
 			spupdatemig = 0;
-
-			/* Final movement allocations - including migration out of model domain (if any) and
+            
+            /* Final movement allocations - including migration out of model domain (if any) and
 			 normalisation of any local recruitment */
 			for (ij = 0; ij < bm->nbox; ij++) {
 				if (bm->terrestrial_on == TRUE && bm->boxes[ij].type == LAND) {
@@ -2458,12 +2458,11 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
                                             
                                             /**
                                             //if(do_debug2){
-                                            if ((sp == 33) || (sp == 32) || (sp == 35)) {
+                                            if (sp == 33)  {
                                                 fprintf(bm->logFile, "Time: %e qid %d %s-%d leaving box %d k: %d migtime2 = %e MigIO: %e\n", bm->dayt, qid, FunctGroupArray[sp].groupCode, n, ij, k, migtime2, IBoxProp);
                                             }
                                             **/
                                             
-
                                             if(!migtime2)  // None migrating so skip ahead
                                                 continue;
                                             
@@ -2483,7 +2482,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
 
                                             /**
 											//if(do_debug2){
-                                            if ((sp == 33) || ((sp > 8) && (sp < 12))) {
+                                            if (sp == 33) {
                                                 fprintf(bm->logFile, "Time: %e %s-%d (stage %d) qid: %d Box-%d-%d newden: %e mignum: %e migProp: %e\n",
 														bm->dayt, FunctGroupArray[sp].groupCode, n, stage, qid, ij, k, newden[sp][n][k][ij], mignum, migProp);
 											}
@@ -2517,7 +2516,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
                                             
                                             /**
                                             //if (do_debug2) {
-                                            if ((sp == 33) || ((sp > 8) && (sp < 12))) {
+                                            if (sp == 33) {
                                                 fprintf(llogfp, "Time: %e %s stage %d qid: %d, multiyr_mig: %d, sp_Migrate_Years: %d, stagger_return: %d, totmig: %e as MIG-den: %e mignum: %e, totden: %e\n", bm->dayt, FunctGroupArray[sp].groupCode, stage, qid, FunctGroupArray[sp].multiyr_mig, sp_Migrate_Years, stagger_return, totmig, MIGRATION[sp].DEN[n][qid], mignum, totden[sp][n]);
                                             }
                                             **/
@@ -2533,7 +2532,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
                                             
 											/**
 											//if(do_debug2){
-                                            if ((sp == 33) || (sp == 32) || (sp == 35)) {
+                                            if (sp == 33) {
 												fprintf(llogfp, "Time: %e, sp %s (cohort %d), qid: %d totmig = %e, totden[sp][n] = %e newden: %e, migProp = %e, migrationDEN = %e, mignum = %e, totden[sp][n]= %e migSN: %e migRN: %e\n", bm->dayt, FunctGroupArray[sp].groupCode, n, qid, totmig, totden[sp][n], newden[sp][n][k][ij], migProp, MIGRATION[sp].DEN[n][qid], mignum, totden[sp][n],  MIGRATION[sp].SN[n][qid],  MIGRATION[sp].RN[n][qid]);
 											}
 											**/
@@ -2616,6 +2615,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
                             newden_sum[n] += newden[sp][n][k][ij];
                             this_tot_biom += totden[sp][n] * newden[sp][n][k][ij] * (bm->boxes[ij].tr[k][sn] + bm->boxes[ij].tr[k][rn]);
                             bm->boxes[ij].tr[k][den] = totden[sp][n] * newden[sp][n][k][ij];
+                            totden_check[sp][n] += totden[sp][n] * newden[sp][n][k][ij];
 
                             if((bm->boxes[ij].tr[k][den] < 0) || (!_finite(bm->boxes[ij].tr[k][den]))){
                                 printf("%e %s-%d movement box%d-%d den: %.20e, totden: %.20e, newden: %.20e\n", bm->dayt,
@@ -2674,7 +2674,7 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
             //fprintf(llogfp,"%s move2 now has next_larvae set to %d\n", FunctGroupArray[sp].groupCode, EMBRYO[sp].next_larvae);
             //printf("%s move2 now has next_larvae set to %d\n", FunctGroupArray[sp].groupCode, EMBRYO[sp].next_larvae);
             
-			/* Finalise migration now all boxes iterated through */
+            /* Finalise migration now all boxes iterated through */
             for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
                 stage = FunctGroupArray[sp].cohort_stage[n];
                 if (MIGRATION[sp].ActualMigrator[stage] > 0) {
@@ -2751,15 +2751,17 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
  	}
     
     /**
-    if ((bm->which_check <= bm->K_num_tot_sp)){
-        if (FunctGroupArray[bm->which_check].isVertebrate == TRUE) {
+    //sp = bm->which_check;
+    sp = 33;
+    if (sp <= bm->K_num_tot_sp){
+        if (FunctGroupArray[sp].isVertebrate == TRUE) {
             for (ij = 0; ij < bm->nbox; ij++) {
                 if (bm->boxes[ij].type != BOUNDARY) {
                     for (k = 0; k < bm->boxes[ij].nz; k++) {
-                        for (n = 0; n < FunctGroupArray[bm->which_check].numCohortsXnumGenes; n++) {
-                            den = FunctGroupArray[bm->which_check].NumsTracers[n];
+                        for (n = 0; n < FunctGroupArray[sp].numCohortsXnumGenes; n++) {
+                            den = FunctGroupArray[sp].NumsTracers[n];
                         
-                            fprintf(llogfp, "END END Time: %e, %s-%d box%d-%d totden: %e, den: %e (newden: %e)\n", bm->dayt, FunctGroupArray[bm->which_check].groupCode, n, ij, k, totden[bm->which_check][n], bm->boxes[ij].tr[k][den], newden[bm->which_check][n][k][ij]);
+                            fprintf(llogfp, "END END Time: %e, %s-%d box%d-%d totden: %e, den: %e (newden: %e totden_check: %e)\n", bm->dayt, FunctGroupArray[sp].groupCode, n, ij, k, totden[sp][n], bm->boxes[ij].tr[k][den], newden[sp][n][k][ij], totden_check[sp][n]);
                         }
                     }
                 }
@@ -2768,21 +2770,16 @@ void Ecology_Total_Verts_And_Migration(MSEBoxModel *bm, double dt, FILE *llogfp)
     }
     **/
     
-    i_free1d(mig_returners);
-
-	i_free2d(counted);
-	free3d(preyamt);
-	free2d(boxden);
-	free4d(currentden);
-	free2d(leftden);
-	free1d(totboxden);
-	free1d(totroc);
-	free1d(totad);
-	free1d(newden_sum);
-
+    if(verbose) {
+        printf("Movement complete\n");
+    }
+    
+    fflush(stdout);     /* in case stdout and stderr are the same so can track soem frees*/
+    fflush(stderr);
 
 	if (bm->debug && (mig_done && ((bm->debug == debug_migrate) || (bm->debug == debug_general)) && (bm->dayt > bm->checkstart)))
 		Check_Gape(bm, llogfp);
+
 
 	return;
 }
@@ -2819,21 +2816,21 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
     int qrt, next_qrt, this_HowFar, agec, sp_Migrate_Years;
 	//int sp_debug;
     // do_debug;
-	double totboxden[invert_biosum + 1];
 	int enviro_depend = 0;
-	double ****currentden;
 	double some_ice, midpoint;
 	double ldayt = bm->t / 86400.0;
     int cells_impacted = 0;
     int cells_checked = 0;
     double numScalar_final = 1.0;
     
-    if (bm->flagtempdepend || bm->flagsaltdepend || bm->flagO2depend)
+    if (verbose > 0)
+        printf("Doing invertebrate movement\n");
+    
+    if (bm->flagtempdepend_move || bm->flagsaltdepend || bm->flagO2depend)
     	enviro_depend = 1;
 
     //printf("Creating invert migration arrays\n");
 
-	currentden = Util_Alloc_Init_4D_Double(bm->nbox, bm->wcnz, bm->K_num_max_cohort * bm->K_num_max_genetypes, bm->K_num_tot_sp, 0.0);
 	current_enviro = 0.0;
 
     /*
@@ -2851,9 +2848,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
 		Parameter_Q10(bm, &bm->boxes[1], ldayt, 1, 0, bm->boxes[1].nz - 1, midpoint, WC, llogfp);
 	}
 
-	if (verbose)
-		printf("Dealing with invertebrate movement\n");
-
+    
 	if (bm->flagday)
 		day_part = 0;
 	else
@@ -2871,10 +2866,16 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
 
 	/* Determine the new distribution for the diel vertical migrating invertebrates */
 	for (fgIndex = 0; fgIndex < bm->K_num_tot_sp; fgIndex++) {
+        Util_Init_1D_Double(totboxden, (bm->K_num_max_cohort * bm->K_num_max_genetypes), 0.0);
+        
 		sp = fgIndex;
         cells_impacted = 0;
         cells_checked = 0;
         numScalar_final = 1.0;
+        
+        if ((FunctGroupArray[sp].isVertebrate == TRUE) || (FunctGroupArray[sp].isDetritus == TRUE)) {  // As not an invertebrate (biomass pool)
+            continue;
+        }
         
         flagsp = (int) (FunctGroupArray[sp].speciesParams[flag_id]);
         sp_ddepend_move = (int) (FunctGroupArray[sp].speciesParams[ddepend_move_id]);
@@ -2893,6 +2894,13 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
             this_HowFar = bm->HowFar;
         }
         
+        if(!bm->flagtempdepend_move) { // Have turned off temperature dependent movement
+            if(temp_sensitive_sp && bm->newmonth) {
+                warn("Ecology_Invert_Migration: Time: %e Zeroing temperature sensitivity for movement of %s even though flagtempsensitive %d as flagtempdepend_move = %d\n", bm->dayt, FunctGroupArray[fgIndex].groupCode, temp_sensitive_sp, bm->flagtempdepend_move);
+            }
+            temp_sensitive_sp = 0;
+        }
+        
         // For non-mobile invertebrates constrain them to initial distributions
         if(bm->flagconstrain_epiwander && (FunctGroupArray[fgIndex].habitatType == EPIFAUNA) && !FunctGroupArray[fgIndex].sp_geo_move) {
             pid = FunctGroupArray[fgIndex].totNTracers[0];
@@ -2905,8 +2913,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
         // Put in environmental limitations for non-mobile groups
         if (enviro_depend && flagsp && (FunctGroupArray[fgIndex].sp_geo_move == FALSE)) {
             /* If temperature dependent check to see if temperatures suitable here.
-               If not zero the entry. Simialrly for salinity and oxygen.
-            */
+               If not zero the entry. Similarly for salinity and oxygen. */
             for (cohort = 0; cohort < FunctGroupArray[fgIndex].numCohortsXnumGenes; cohort++) {
                 pid = FunctGroupArray[fgIndex].totNTracers[cohort];
                 for (ij = 0; ij < bm->nbox; ij++) {
@@ -3002,7 +3009,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
             }
         }
         
-        // Dedicated invertebrate movements
+        /* Dedicated invertebrate movements */
 		if (flagsp && (FunctGroupArray[fgIndex].speciesParams[flag_id] == TRUE) && (FunctGroupArray[fgIndex].isVertebrate == FALSE) && (FunctGroupArray[fgIndex].isMobile == TRUE)) {
             
             spmigrate = MIGRATION[sp].num_in_queue;
@@ -3012,7 +3019,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
             /* Make parameter adjustments due to acidification */
             flagcontract_sp = (int)FunctGroupArray[sp].speciesParams[flagcontract_tol_id];
             pH_scale = (FunctGroupArray[sp].pHcorr - 1.0);
-           if( flagcontract_sp  && (pH_scale > 0.0)) {
+            if( flagcontract_sp  && (pH_scale > 0.0)) {
                 contract_sp = FunctGroupArray[sp].speciesParams[contract_tol_id];
                 min_temp_sp += contract_sp * pH_scale;
                 max_temp_sp -= contract_sp * pH_scale;
@@ -3024,7 +3031,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
             /* Get the current season index */
             qrt = FunctGroupArray[sp].moveEntryIndex;
             next_qrt = FunctGroupArray[sp].next_moveEntryIndex;
-
+            
 			for (cohort = 0; cohort < FunctGroupArray[fgIndex].numCohortsXnumGenes; cohort++) {
 				pid = FunctGroupArray[fgIndex].totNTracers[cohort];
 				stage = FunctGroupArray[fgIndex].cohort_stage[cohort];
@@ -3042,8 +3049,8 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
                 totamt = 0.0;
 
                 for (ij = 0; ij < bm->nbox; ij++) {
+                    amt = 0;
                     if (bm->boxes[ij].type != BOUNDARY && bm->boxes[ij].type != LAND) {
-                        amt = 0;
                         if (FunctGroupArray[fgIndex].habitatType != EPIFAUNA) {
                             for (k = 0; k < bm->boxes[ij].nz; k++) {
                                 amt += bm->boxes[ij].tr[k][pid];
@@ -3054,7 +3061,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
                                     fprintf(llogfp, "Time: %e, sp %s (%d)in box: %d layer: %d, starts with %e (%.20e)\n",
                                         bm->dayt, FunctGroupArray[sp].groupCode, pid, ij, k, amt, bm->boxes[ij].tr[k][pid]);
                                 }
-                                 */
+                                */
                             }
                         } else {
                             amt += bm->boxes[ij].epi[pid];
@@ -3078,9 +3085,12 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
 						fprintf(llogfp, "sp_geo_move = %d\n", sp_geo_move);
 
                 }
-                 */
+                */
+
                 /* Store biomass so can scale movement distributions */
                 totboxden[invert_biosum+cohort] = totamt;
+                
+                
             }
 
             for (cohort = 0; cohort < FunctGroupArray[fgIndex].numCohortsXnumGenes; cohort++) {
@@ -3191,13 +3201,11 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
                             */
                                 
                             /* Do environmental checks - FIX - This needs to be tidied up in new code where
-                               distinction between vertebrates and invertebrates reduced (talk to Bec)
-                            */
+                               distinction between vertebrates and invertebrates reduced */
                                 
                             if (enviro_depend) {
                                 /* If temperature dependent check to see if temperatures suitable here.
-                                    If not zero the entry. Simialrly for salinity and oxygen.
-                                    */
+                                    If not zero the entry. Simialrly for salinity and oxygen. */
                                 for (k = 0; k < maxk; k++) {
                                     /* Noise and light pollution avoidance */
                                     if (FunctGroupArray[sp].isLightEffected) {
@@ -3267,6 +3275,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
 
                                 }
                             }
+                            
                             /*
                             if(sp_debug == 2){
                                 fprintf(llogfp,"%s enviro_depend: %d, flagtempdepend: %d, current_enviro: %e, min_temp_sp: %e, max_temp_sp: %e\n",
@@ -3277,7 +3286,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
                                     FunctGroupArray[sp].groupCode,  bm->flagO2depend, min_O2_sp);
 
                             }
-                             */
+                            */
                             
                             /* Total up the new proportions just to make sure */
                             totboxden[invert_propsum] += newden[sp][cohort][0][ij];
@@ -3317,7 +3326,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
                                         fprintf(llogfp, "%s-%d Migration %d Box:%d Biomass out of box = %e (migbiom: %e)\n",
                                             FunctGroupArray[sp].groupCode, cohort, qid, ij, migbiom * totboxden[invert_biosum], migbiom);
                                     }
-                                     */
+                                    */
                                 }
                             }
                         }
@@ -3330,7 +3339,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
 									bm->dayt, FunctGroupArray[sp].groupCode, stage, qid, MIGRATION[sp].DEN[cohort][qid] * bm->X_CN * mg_2_tonne);
                         }
                     }
-                     */
+                    */
                     
                     /* If something doesn't add up normalise */
                     if (totboxden[invert_propsum] != 1.0) {
@@ -3349,16 +3358,18 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
                                 /* As benthic invertebrates or water column	invertebrates
                                    with vertical movement still to happen put entire biomass
                                    in bottom-most water layer and set all other layers
-                                   to zero - divide by volume so back in mgN m-3*/
+                                   to zero - divide by volume so back in mgN m-3 */
                                 bm->boxes[ij].tr[0][pid] = totboxden[invert_biosum+cohort] * newden[sp][cohort][0][ij] / (bm->boxes[ij].dz[0] * bm->boxes[ij].area + small_num);
+                                
 								/*
                                 if(sp_debug == 2){
                                     fprintf(llogfp,"%s has totboxden: %e, newden[%d][%d]: %e\n", FunctGroupArray[sp].groupCode, totboxden[invert_biosum], cohort, ij, newden[sp][cohort][0][ij]);
                                 }
 								*/
 
-								for (k = 1; k < bm->boxes[ij].nz; k++)
+                                for (k = 1; k < bm->boxes[ij].nz; k++) {
                                     bm->boxes[ij].tr[k][pid] = 0;
+                                }
                             }
                         }
                     } else {
@@ -3389,7 +3400,8 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
                     fprintf(llogfp, "Time: %e, %s total end biom: %e (%e of orig)\n", bm->dayt, FunctGroupArray[sp].groupCode, totamt, totamt / origamt);
 
                 }
-                 */
+                */
+                
                 /** For animals in the water column do any vertical movement necessary **/
                 if (FunctGroupArray[fgIndex].habitatType != EPIFAUNA) {
                     for (ij = 0; ij < bm->nbox; ij++) {
@@ -3473,6 +3485,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
 			}
 		}
         
+        
         if(bm->flagenviro_warn & cells_impacted) {
             fprintf(llogfp, "Time: %e %s is environmemtally constrained in %d of %d cells (box*layer*cohort combos)\n", bm->dayt, FunctGroupArray[sp].groupCode, cells_impacted, cells_checked);
         }
@@ -3483,23 +3496,23 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
 	for(ij=0; ij<bm->nbox; ij++){
 		if(bm->boxes[ij].type != BOUNDARY && bm->boxes[ij].type != LAND){
 			/* Pelagic invertebrates */
-
 			for(sp = 0; sp < bm->K_num_tot_sp; sp++){
 				if(FunctGroupArray[sp].isVertebrate == FALSE && FunctGroupArray[sp].isImpacted == TRUE){
+                    
 					for(cohort = 0; cohort < FunctGroupArray[sp].numCohortsXnumGenes; cohort++){
 						pid = FunctGroupArray[sp].totNTracers[cohort];
 
-						if(FunctGroupArray[sp].habitatType == WC){
+						if(FunctGroupArray[sp].habitatType == WC) {
 							for(k=0; k<bm->boxes[ij].nz; k++){
 								bm->totbiom[sp] += bm->boxes[ij].tr[k][pid] * bm->boxes[ij].dz[k] * bm->boxes[ij].area;
 								bm->targetspbiom[sp][ij] += bm->boxes[ij].tr[k][pid] * bm->boxes[ij].dz[k] * bm->boxes[ij].area;
 							}
-						}else if(FunctGroupArray[sp].habitatType == SED){
+						} else if(FunctGroupArray[sp].habitatType == SED) {
 							for(k=0; k<bm->boxes[ij].sm.nz; k++){
 								bm->totbiom[sp] += bm->boxes[ij].sm.tr[k][pid] * bm->boxes[ij].sm.dz[k] * bm->boxes[ij].area;
 								bm->targetspbiom[sp][ij] += bm->boxes[ij].sm.tr[k][pid] * bm->boxes[ij].sm.dz[k] * bm->boxes[ij].area;
 							}
-						}else{
+						} else {
 							bm->totbiom[sp] += bm->boxes[ij].epi[pid] * bm->boxes[ij].area;
 							bm->targetspbiom[sp][ij] += bm->boxes[ij].epi[pid] * bm->boxes[ij].area;
 						}
@@ -3508,7 +3521,7 @@ void Ecology_Invert_Migration(MSEBoxModel *bm, double dt, FILE *llogfp) {
 			}
 		}
 	}
-	free4d(currentden);
+    
 	return;
 }
 
@@ -3793,6 +3806,13 @@ int Invade_Spread(MSEBoxModel *bm, int sp, FILE *llogfp, int b, int nb, int k, d
     double xdiff = bm->boxes[b].inside.x - bm->boxes[nb].inside.x;
     double ydiff = bm->boxes[b].inside.y - bm->boxes[nb].inside.y;
     *dist = sqrt(xdiff * xdiff + ydiff * ydiff);
+    
+    if(!bm->flagtempdepend_move) { // Have turned off temperature dependent movement
+        if(temp_sensitive_sp && bm->newmonth) {
+            warn("Invade_Spread: Time: %e Zeroing temperature sensitivity for movement of %s even though flagtempsensitive %d as flagtempdepend_move = %d\n", bm->dayt, FunctGroupArray[sp].groupCode, temp_sensitive_sp, bm->flagtempdepend_move);
+        }
+        temp_sensitive_sp = 0;
+    }
     
     if ((!temp_sensitive_sp) && (!salt_sensitive_sp) && (!bm->flagO2depend))
         go_there = 1;
@@ -4114,7 +4134,7 @@ void Get_Vertical_Distribution(MSEBoxModel *bm, int ij, int species, double ****
             // TODO: May need to allow for renormalisation of layers so end up sandwiched into non-zero layers rather than drain them away
             // TODO: Allow for deepening of distribution as environment changes
             /* Ignore following code as handled in main movement routine with an enviro check there
-			if (bm->flagtempdepend) {
+			if (bm->flagtempdepend_move) {
 				current_enviro = bm->boxes[ij].tr[k][Temp_i];
 				if ((current_enviro < min_temp_sp) || (current_enviro > max_temp_sp)) {
 					tempdistrib[k][juv_id] = 0.0;
@@ -4173,9 +4193,11 @@ void Get_Vertical_Distribution(MSEBoxModel *bm, int ij, int species, double ****
  *
  */
 double Check_Conditions(MSEBoxModel *bm, int sp, int n, int ij, int k, double ****newden) {
+    int flagcontract_sp, contract_sp;
     double numScalar = 1.0;
     double numScalar_final = 1.0;
     double some_ice = 0.0;
+    double pH_scale = 0.0;
     //double ice_effect;
     double current_enviro = bm->boxes[ij].tr[k][Temp_i];
     double K_temp_const_sp = FunctGroupArray[sp].speciesParams[K_temp_const_id];
@@ -4189,6 +4211,22 @@ double Check_Conditions(MSEBoxModel *bm, int sp, int n, int ij, int k, double **
     int temp_sensitive_sp = (int)(FunctGroupArray[sp].speciesParams[flagtempsensitive_id]);
     int salt_sensitive_sp = (int)(FunctGroupArray[sp].speciesParams[flagSaltSensitive_id]);
     int stage = FunctGroupArray[sp].cohort_stage[n];
+    
+    if(!bm->flagtempdepend_move) { // Have turned off temperature dependent movement
+        if(temp_sensitive_sp && bm->newmonth) {
+            warn("Check_Conditions: Time: %e Zeroing temperature sensitivity for movement of %s even though flagtempsensitive %d as flagtempdepend_move = %d\n", bm->dayt, FunctGroupArray[sp].groupCode, temp_sensitive_sp, bm->flagtempdepend_move);
+        }
+        temp_sensitive_sp = 0;
+    }
+
+    /* Make parameter adjustments due to acidification */
+    flagcontract_sp = (int)FunctGroupArray[sp].speciesParams[flagcontract_tol_id];
+    pH_scale = (FunctGroupArray[sp].pHcorr - 1.0);
+    if( flagcontract_sp  && (pH_scale > 0.0)) {
+        contract_sp = (int)FunctGroupArray[sp].speciesParams[contract_tol_id];
+        min_temp_sp += contract_sp * pH_scale;
+        max_temp_sp -= contract_sp * pH_scale;
+    }
 
     numScalar = Get_Enviro_Move_Scalar(temp_sensitive_sp, current_enviro, K_temp_const_sp, min_temp_sp, max_temp_sp, sp, 1, bm->dayt, bm->logFile);
     newden[sp][n][k][ij] *= numScalar;
@@ -4252,6 +4290,13 @@ int Check_Realloc_Conditions(MSEBoxModel *bm, int sp, int n, int ij, int k) {
     int temp_sensitive_sp = (int)(FunctGroupArray[sp].speciesParams[flagtempsensitive_id]);
     int salt_sensitive_sp = (int)(FunctGroupArray[sp].speciesParams[flagSaltSensitive_id]);
     int stage = FunctGroupArray[sp].cohort_stage[n];
+    
+    if(!bm->flagtempdepend_move) { // Have turned off temperature dependent movement
+        if(temp_sensitive_sp && bm->newmonth) {
+            warn("Check_Realloc_Conditions: Time: %e Zeroing temperature sensitivity for movement of %s even though flagtempsensitive %d as flagtempdepend_move = %d\n", bm->dayt, FunctGroupArray[sp].groupCode, temp_sensitive_sp, bm->flagtempdepend_move);
+        }
+        temp_sensitive_sp = 0;
+    }
     
     numScalar = Get_Enviro_Move_Scalar(temp_sensitive_sp, current_enviro, K_temp_const_sp, min_temp_sp, max_temp_sp, sp, 1, bm->dayt, bm->logFile);
     numScalar_final *= numScalar;

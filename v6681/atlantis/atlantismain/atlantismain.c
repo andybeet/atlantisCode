@@ -177,6 +177,8 @@ static void set_up_vvdistrib(MSEBoxModel *bm);
 static void setupMSEBoxModel(int argc, char *argv[], MSEBoxModel *bm);
 static void checknetCDFFiles(MSEBoxModel *bm);
 
+void Util_Usage();
+
 FILE *logfp;
 FILE *haltfp;
 
@@ -208,6 +210,7 @@ EvolutionStruct *DNA;
 CoralStruct *CORALREEF;
 PhysioChemStruct *PhysioChemArray;
 FisheryStruct *FisheryArray;
+AssessProjectionStruct *ASSESS_PROJECTION;
 
 int it_count, waterboundary;
 int sp;
@@ -223,8 +226,8 @@ int runNextTimeStep(MSEBoxModel *bm){
 
 	if (verbose > 1)
 		printf("Call checking time\n");
-
-	/* Check the time */
+    
+    /* Check the time */
 	Ecology_Time_Check(bm, bm->t, bm->dt, logfp);
     
      /* Print current time */
@@ -248,7 +251,7 @@ int runNextTimeStep(MSEBoxModel *bm){
 		if(bm->terrestrial_on){
 			writeBMLandData(bm->ncOfid, bm->ncOfdump, bm, 0);
 		}
-
+        
 		ncsync(bm->ncOfid);
 		bm->ncOfdump++;
         
@@ -257,13 +260,13 @@ int runNextTimeStep(MSEBoxModel *bm){
 		writeBMSummaryEpiData(bm->ncOsumfid, bm->ncOsumdump, bm);
 		ncsync(bm->ncOsumfid);
 		bm->ncOsumdump++;
-
+        
 		/* Write production/consumption data */
 		writeBMphysData(bm->ncOpcfid, bm->ncOpcdump, bm, 2);
 		writeBMDiagData(bm->ncOpcfid, bm->ncOpcdump, bm, 2);
 		ncsync(bm->ncOpcfid);
 		bm->ncOpcdump++;
-
+        
         /* Write annual age structured output - if required */
         if (bm->flag_age_output > 1) {
             writeBMphysData(bm->ncOaafid, bm->ncOaadump, bm, 1);
@@ -296,10 +299,12 @@ int runNextTimeStep(MSEBoxModel *bm){
         
         /* Write details */
 		writeBMphysData(bm->ncOdetfishfid, bm->ncOdetfishdump, bm, 3);
+        
 		writeBMFisheriesData(bm->ncOdetfishfid, bm->ncOdetfishdump, bm, 3);
+        
 		ncsync(bm->ncOdetfishfid);
 		bm->ncOdetfishdump++;
-
+        
         /* Write annual age structured output - if required */
         if (bm->flag_age_output > 1) {
             writeBMphysData(bm->ncOaacfid, bm->ncOaacdump, bm, 1);
@@ -330,7 +335,7 @@ int runNextTimeStep(MSEBoxModel *bm){
 
     /* Calculate stock values for each group */
 	Util_Calculate_StockID(bm);
-
+    
     if (verbose > 1)
 		printf("Call doing assessment \n");
 
@@ -383,7 +388,7 @@ int runNextTimeStep(MSEBoxModel *bm){
 			Harvest_Annual_Calculations(bm, logfp);
 			Manage_Annual_Calculations(bm, logfp);
 			Annual_Mgmt_Implementation(bm, logfp);
-
+            
 			Update_Harvest_Index_Values(bm, logfp);
 			Manage_Update_Indices(bm, logfp);
 
@@ -410,7 +415,7 @@ int runNextTimeStep(MSEBoxModel *bm){
 				printf("Call economics\n");
 			Economics(bm, logfp);
 		}
-
+        
 		Manage_Calculate_Total_Effort(bm, logfp);
 
 		/* To increase speed in debugging use this to provide fisheries with catches
@@ -437,7 +442,6 @@ int runNextTimeStep(MSEBoxModel *bm){
 
         /* Do any maturity updating */
 		Ecology_Update_Invert_Cohorts(bm, logfp);
-        
         Ecology_Update_Vertebrate_Cohorts(bm, logfp);
         
         /* Update any scaled values such as growth rates */
@@ -447,11 +451,11 @@ int runNextTimeStep(MSEBoxModel *bm){
             printf("Call migration of vertebrates\n");
 
         /* Calculate total vertebrates for the area and perform migrations */
+        Ecology_Update_Move_Entry(bm, logfp);  // Not in fishmove test loop as might have inverts being updated
         if (bm->fishmove) {
-            Ecology_Update_Move_Entry(bm, logfp);
             Ecology_Total_Verts_And_Migration(bm, bm->dt, logfp);
         }
-
+        
 		Ecology_Invading_Species(bm, bm->dt, logfp);
         
         if (fishtest) {
@@ -459,15 +463,19 @@ int runNextTimeStep(MSEBoxModel *bm){
 		}
 
 		Ecology_Calculate_Total_Abundance(bm, bm->dt, 0, logfp);
-
+        
 		if (verbose > 1)
 			printf("Call migration of invertebrates\n");
 
         /* Perform invertebrate migrations */
 		Ecology_Invert_Migration(bm, bm->dt, logfp);
-		if (verbose > 1)
-			printf("Call ecology\n");
 
+        if (verbose > 1) {
+            printf("Call ecology\n");
+            fflush(stdout);
+            fflush(stderr);
+        }
+        
         /* Do biological processes - step through biology for each box */
 		for (b = 0; b < bm->nbox; b++) {
 
@@ -505,9 +513,10 @@ int runNextTimeStep(MSEBoxModel *bm){
                 }
             }
 		}
+        
 		Ecology_Starve_Notice(bm, logfp);
-		Harvest_Update_Temp_Catch_Array(bm, logfp);
 
+		Harvest_Update_Temp_Catch_Array(bm, logfp);
 	}
 
     /*
@@ -523,7 +532,7 @@ int runNextTimeStep(MSEBoxModel *bm){
         physics(bm, newwctr, newsedtr, logfp);
 		//physics(bm, newwctr, newsedtr, newicetr, newlandtr, logfp);
     }
-
+    
     #ifdef CLAM_LINK_ENABLED
 	//if(do_CLAMLinkage){
 	//    CLAM_Check_Indicators(&bm);
@@ -539,7 +548,7 @@ int runNextTimeStep(MSEBoxModel *bm){
 
 	/* Boundary stuff */
 	boundaries(bm, newwctr, newsedtr, newicetr, newlandtr, logfp);
-
+    
 	//fprintf(bm->logFile, "end of boundaries - Arsenic in wc 1:0 = %e\n", newwctr[1][0][1499]);
 	//fprintf(bm->logFile, "end of boundaries - Arsenic in sed 1:0 = %e\n", newsedtr[1][0][1499]);
 
@@ -550,7 +559,7 @@ int runNextTimeStep(MSEBoxModel *bm){
 	if(bm->ice_on == TRUE){
 		memcpy(bm->icetr[0][0], newicetr[0][0], sizeof(double) * (long unsigned int)bm->nbox * (long unsigned int)bm->icenz * (long unsigned int)bm->ntracer);
 	}
-
+    
 //	if(bm->terrestrial_on){
 //		memcpy(bm->landtr[0], newlandtr[0], sizeof(double) * bm->nbox * bm->nland);
 //	}
@@ -565,6 +574,9 @@ int runNextTimeStep(MSEBoxModel *bm){
     if(bm->track_contaminants && bm->flag_contam_sanity_check){
         Check_Contam_Totals(bm);
     }
+
+    fflush(stdout);
+    fflush(stderr);
 
     /* Update time and step number */
 	bm->t += bm->dt;

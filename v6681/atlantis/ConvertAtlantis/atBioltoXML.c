@@ -2402,13 +2402,16 @@ void createMovementXML(MSEBoxModel *bm, FILE *fp, char *fileName, xmlDocPtr doc,
 
 	Create_Species_ParamXML(bm, fileName, fp, groupingNode, Speed_id, "Swimming speed", "m.hr-1", XML_TYPE_FLOAT, "12500");
 
-	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flagtempdepend", "Switch to turn on group temperature preferences", "", XML_TYPE_BOOLEAN,"0");
+	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flagtempdepend_move", "Switch to turn on group temperature preferences for movement", "", XML_TYPE_BOOLEAN,"0");
+    Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flagtempdepend_reprod", "Switch to turn on group temperature preferences for reproduction", "", XML_TYPE_BOOLEAN,"0");
 	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flagsaltdepend", "Switch to turn on group salinity preferences", "", XML_TYPE_BOOLEAN,"0");
 	Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flagO2depend", "Switch to turn on group O2 preferences", "", XML_TYPE_BOOLEAN,"0");
     Util_XML_Parse_Create_Node(fp, fileName, groupingNode, "flagconstrain_epiwander", "Switch to indicate that want to prevent epibenthic wandering", "", XML_TYPE_BOOLEAN,"0");
 
-    Util_XML_Get_Value_Integer(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, no_checking, "flagtempdepend", &bm->flagtempdepend);
-    if (bm->flagtempdepend) {
+    Util_XML_Get_Value_Integer(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, no_checking, "flagtempdepend_move", &bm->flagtempdepend_move);
+    Util_XML_Get_Value_Integer(fileName, ATLANTIS_ATTRIBUTE, bm->ecotest, 1, groupingNode, no_checking, "flagtempdepend_reprod", &bm->flagtempdepend_reprod);
+
+    if (bm->flagtempdepend_move) {
         Create_Species_ParamXML(bm, fileName, fp, groupingNode, max_move_temp_id, "Min tolerated temperatures", "deg C", XML_TYPE_FLOAT, "");
         Create_Species_ParamXML(bm, fileName, fp, groupingNode, min_move_temp_id, "Maximum tolerated temperatures", "deg C", XML_TYPE_FLOAT, "");
         Create_Species_ParamXML(bm, fileName, fp, groupingNode, K_temp_const_id, "Constant in bilogistic tolerated temperature relationship", "deg C", XML_TYPE_FLOAT, "");
@@ -3200,7 +3203,8 @@ void createReproductionXML(MSEBoxModel *bm, FILE *fp, char *fileName, xmlDocPtr 
 	Create_Species_ParamXML(bm, fileName, fp, groupingNode, KWSR_id, "Structural weight of group recruits", "mg N m-3", XML_TYPE_FLOAT, "0.01 - 117362680.0");
 	Create_Species_ParamXML(bm, fileName, fp, groupingNode, KWRR_id, "Reserve weight of group recruits", "mg N m-3", XML_TYPE_FLOAT, "0.038 -  311011104.0");
 
-    if (bm->flagtempdepend) {
+    
+    if (bm->flagtempdepend_reprod) {
         Create_Species_ParamXML(bm, fileName, fp, groupingNode, min_spawn_temp_id, "Minimum spawning temperature", "deg C", XML_TYPE_FLOAT, "4.0 - 22.0");
         Create_Species_ParamXML(bm, fileName, fp, groupingNode, max_spawn_temp_id, "Maximum spawning temperature", "deg C", XML_TYPE_FLOAT, "21.0 - 25.0");
     }
@@ -3793,7 +3797,7 @@ void Convert_Migration_To_XML(MSEBoxModel *bm, char *fileName, char *outputFileN
     FILE *inputFP;
     //xmlNodePtr node;
     //xmlNodePtr lookupNode;
-    int numExpectedTokens = 16;
+    int numExpectedTokens = 17;
     int buflen = 2000;
     char ch, buf[2000], seps[] = ",";
     char *varStr;
@@ -3914,6 +3918,10 @@ void Convert_Migration_To_XML(MSEBoxModel *bm, char *fileName, char *outputFileN
             /* Upper End of age when partial migration occurs */
             varStr = strtok(NULL, seps);
             Util_XML_Create_Node(ATLANTIS_ATTRIBUTE, groupNode, "MaxAgeLeave", "", "", varStr);
+            
+            /* Whether can reproduce while outside the model */
+            varStr = strtok(NULL, seps);
+            Util_XML_Create_Node(ATLANTIS_ATTRIBUTE, groupNode, "ReprodAllowed", "", "", varStr);
 
         }
     }
@@ -3935,7 +3943,7 @@ int Util_Read_Migration_XML(MSEBoxModel *bm, char *fileName, FILE *llogfp) {
     xmlNodePtr groupNode;
     char groupStr[STRLEN];
     int speciesIndex;
-    int start_stage, migrationID, start_tofy, end_tofy, mig_period, mig_period2, minaway, maxaway, ret_stock, isAnnual, flagPartialExit, MinAgePartial, MaxAgePartial;
+    int start_stage, migrationID, start_tofy, end_tofy, mig_period, mig_period2, minaway, maxaway, ret_stock, isAnnual, flagPartialExit, MinAgePartial, MaxAgePartial, ReprodAllowedPartial;
     double grow_rate, survive_rate;
     char convertedXMLFileName[STRLEN];
     
@@ -4003,7 +4011,8 @@ int Util_Read_Migration_XML(MSEBoxModel *bm, char *fileName, FILE *llogfp) {
             Util_XML_Get_Value_Integer(convertedXMLFileName, ATLANTIS_ATTRIBUTE, 0, TRUE, groupNode, no_checking, "PartialExit", &flagPartialExit);
             Util_XML_Get_Value_Integer(convertedXMLFileName, ATLANTIS_ATTRIBUTE, 0, TRUE, groupNode, no_checking, "MinAgeLeave", &MinAgePartial);
             Util_XML_Get_Value_Integer(convertedXMLFileName, ATLANTIS_ATTRIBUTE, 0, TRUE, groupNode, no_checking, "MaxAgeLeave", &MaxAgePartial);
-
+            Util_XML_Get_Value_Integer(convertedXMLFileName, ATLANTIS_ATTRIBUTE, 0, TRUE, groupNode, no_checking, "ReprodAllowed", &ReprodAllowedPartial);
+            
             // Set parameters
             MIGRATION[speciesIndex].StartDay_Prm[start_stage][migrationID] = start_tofy;
             MIGRATION[speciesIndex].EndDay_Prm[start_stage][migrationID] = end_tofy;
@@ -4018,6 +4027,7 @@ int Util_Read_Migration_XML(MSEBoxModel *bm, char *fileName, FILE *llogfp) {
             MIGRATION[speciesIndex].IsPartialMigration_Prm[start_stage][migrationID] = flagPartialExit;
             MIGRATION[speciesIndex].PartialMigration_MinPrm[start_stage][migrationID] = MinAgePartial;
             MIGRATION[speciesIndex].PartialMigration_MaxPrm[start_stage][migrationID] = MaxAgePartial;
+            MIGRATION[speciesIndex].ReprodAllowedPrm[start_stage][migrationID] = ReprodAllowedPartial;
             
             MIGRATION[speciesIndex].Stagger_Prm[start_stage][migrationID][stagger_years_id] = MIGRATION[speciesIndex].MaxYearsAway_Prm[start_stage][migrationID] - MIGRATION[speciesIndex].MinYearsAway_Prm[start_stage][migrationID];
             if( MIGRATION[speciesIndex].Stagger_Prm[start_stage][migrationID][stagger_years_id] > 0) {
