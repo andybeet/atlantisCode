@@ -1,1 +1,0 @@
-#define ATLANTIS_REVISION "Unknown"
