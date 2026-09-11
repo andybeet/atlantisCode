@@ -83,7 +83,7 @@ void GenData(MSEBoxModel *bm, int groupIndex, int yearIndex) {
         // get close kin data if required
         if(bm->CloseKinEst->UseCloseKin && FunctGroupArray[groupIndex].isCloseKin) {
             GetCloseKinNum(bm, groupIndex, yearIndex);
-            CKsimulator(bm, groupIndex, yearIndex);
+            //CKsimulator(bm, groupIndex, yearIndex);
             bm->CloseKinEst[groupIndex].nCKsampled++;
         }
             
