@@ -121,9 +121,7 @@ void Write_Annual_TAC(FILE *fid, MSEBoxModel *bm, FILE *llogfp)
 		}
 	}
 	fprintf(fid,"\n");
-    
-    fflush(fid);
-    
+
 	return;
 }
 

@@ -219,8 +219,9 @@ static void Init_Spawning(MSEBoxModel *bm, FILE *llogfp, int do_debug, int sp) {
     int recruit_sp = (int) (FunctGroupArray[sp].speciesParams[flagrecruit_id]);
     double prod_scalar = 1.0;
     double maxstock = (double)(FunctGroupArray[sp].numStocks);
+	double *adults_spawning = (double *) alloc1d(bm->K_num_stocks_per_sp);
     double first_spawn = -1.0;
-    
+
 	AgeClassSize_sp = (double)(FunctGroupArray[sp].ageClassSize);
 	flagdem = (int) (FunctGroupArray[sp].speciesParams[flagdem_id]);
     recruit_sp = (int) (FunctGroupArray[sp].speciesParams[flagrecruit_id]);
@@ -234,8 +235,6 @@ static void Init_Spawning(MSEBoxModel *bm, FILE *llogfp, int do_debug, int sp) {
     if (verbose) {
         printf(" Doing Init_Spawning %s\n", FunctGroupArray[sp].groupCode);
     }
-    
-    Util_Init_1D_Double(adults_spawning, bm->K_num_stocks_per_sp, 0.0);
     
     //do_debug = 1;
 
@@ -267,6 +266,10 @@ static void Init_Spawning(MSEBoxModel *bm, FILE *llogfp, int do_debug, int sp) {
             adults_spawning[stock_id] = 1.0;
         }
     } else if ( FunctGroupArray[sp].groupAgeType == AGE_STRUCTURED_BIOMASS) {
+        for (stock_id = 0; stock_id < bm->K_num_stocks_per_sp; stock_id++) {
+            adults_spawning[stock_id] = 0.0;
+        }
+
         for(cohort = 0; cohort < FunctGroupArray[sp].numCohortsXnumGenes; cohort++){
             den = FunctGroupArray[sp].totNTracers[cohort];
             for (i = 0; i < nboxes; i++) {
@@ -752,6 +755,8 @@ static void Init_Spawning(MSEBoxModel *bm, FILE *llogfp, int do_debug, int sp) {
     if ((EMBRYO[sp].next_age_any_age < 0) || (EMBRYO[sp].next_age_any_age > ((365.0 * bm->tstop) / 86400.0)))
         quit("First aging date for %s (%d) makes no sense - note testing against 0 and %e as tstop is : %e\n", FunctGroupArray[sp].groupCode, EMBRYO[sp].next_age_any_age, ((365.0 * bm->tstop) / 86400.0), bm->tstop);
     
+	free1d(adults_spawning);
+    
 	return;
 }
 
@@ -1126,16 +1131,6 @@ static double Get_Init_Embryos(MSEBoxModel *bm, int species, int ngene, int stoc
             
             // Evolution only works for these spawning cases for now - TODO: Generalise so evolution works in all cases
             EMBRYO[species].Larvae[stock_id][ngene][qid] += EMBRYO[species].TotSpawn[ngene];
-            
-            /**
-            //if (do_debug && (bm->which_check == species)) {
-            if (species == 33) {
-                fprintf(bm->logFile,"Doing %s stock %d, ngene: %d, qid: %d, TotSpawn: %e, Larvae: %e\n",
-                FunctGroupArray[species].groupCode, stock_id, ngene, qid, EMBRYO[species].TotSpawn[ngene],
-                EMBRYO[species].Larvae[stock_id][ngene][qid]);
-            }
-            **/
-            
             break;
         case fixed_linear_recruit:/* Pupping or calving a fixed number per adult spawning */
             for(bcohort = 0; bcohort < FunctGroupArray[species].numCohorts; bcohort++){
@@ -1242,13 +1237,6 @@ static double Get_Init_Embryos(MSEBoxModel *bm, int species, int ngene, int stoc
     }
 
     ans = temprec;
-    
-    /**
-    //if (do_debug && (bm->which_check == species)) {
-    if (species == 33) {
-        fprintf(bm->logFile, "Initialisation, species %s, recruit_sp case: %d, BulkRecruits: %e, temprec: %e, Larvae: %e qid: %d)\n", FunctGroupArray[species].groupCode, recruit_sp, temprec, EMBRYO[species].Larvae[stock_id][ngene][qid], qid);
-    }
-    **/
     
     // Reset SSB in case spawn very soon after
     bm->tot_SSB[species] = 0.0;

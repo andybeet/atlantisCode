@@ -253,7 +253,7 @@ double Avoid_Contaminants(MSEBoxModel *bm, int groupIndex, int cohort, int box, 
  *
  */
 
-void Move_Vert_Contaminated(MSEBoxModel *bm, int sp, int cohort, double ****this_currentden) {
+void Move_Vert_Contaminated(MSEBoxModel *bm, int sp, int cohort, double ****currentden) {
     int ij, k, cIndex, cid, pid, clayer, next_box, nextij;
     double num_possible, new_num_in_box;
     double **diffden, **num_contam, ***localcontam, ***num_contam_moved;
@@ -275,7 +275,7 @@ void Move_Vert_Contaminated(MSEBoxModel *bm, int sp, int cohort, double ****this
             if (bm->boxes[ij].type != BOUNDARY) {
                 for (k = 0; k < bm->boxes[ij].nz; k++) {
                     // Change in numbers
-                    diffden[ij][k] = this_currentden[sp][cohort][k][ij] - bm->boxes[ij].tr[k][den];
+                    diffden[ij][k] = currentden[sp][cohort][k][ij] - bm->boxes[ij].tr[k][den];
 
                     //fprintf(bm->logFile, "Time: %e box%d-%d %s-%d for %s has diffden: %e\n", bm->dayt, ij, k, FunctGroupArray[sp].groupCode, cohort, bm->contaminantStructure[cIndex]->contaminant_name, diffden[ij][k]);
 
@@ -307,10 +307,10 @@ void Move_Vert_Contaminated(MSEBoxModel *bm, int sp, int cohort, double ****this
                             num_possible = min(num_contam_moved[ij][k][cIndex], diffden[ij][clayer]);
 
                             // New contam level - average of what is there and what moved in
-                            bm->boxes[ij].tr[clayer][cid] = (bm->boxes[ij].tr[clayer][cid] * bm->boxes[ij].tr[clayer][pid] * this_currentden[sp][cohort][clayer][ij] + num_possible * localcontam[ij][k][cIndex]) / (num_possible + bm->boxes[ij].tr[clayer][pid] * this_currentden[sp][cohort][clayer][ij] + small_num);
+                            bm->boxes[ij].tr[clayer][cid] = (bm->boxes[ij].tr[clayer][cid] * bm->boxes[ij].tr[clayer][pid] * currentden[sp][cohort][clayer][ij] + num_possible * localcontam[ij][k][cIndex]) / (num_possible + bm->boxes[ij].tr[clayer][pid] * currentden[sp][cohort][clayer][ij] + small_num);
 
                             // Adjust local proportion
-                            new_num_in_box = bm->boxes[ij].tr[clayer][pid] * this_currentden[sp][cohort][clayer][ij] + num_possible;
+                            new_num_in_box = bm->boxes[ij].tr[clayer][pid] * currentden[sp][cohort][clayer][ij] + num_possible;
                             bm->boxes[ij].tr[clayer][pid] = new_num_in_box / (bm->boxes[ij].tr[k][den] + small_num);
 
                             //fprintf(bm->logFile, "Time %e box%d-%d %s %d %s has after move prop: %e with new_num_in_box %e den: %e\n", bm->dayt, ij, clayer, FunctGroupArray[sp].groupCode, cohort, bm->contaminantStructure[cIndex]->contaminant_name, bm->boxes[ij].tr[clayer][pid], new_num_in_box, bm->boxes[ij].tr[k][den]);
@@ -342,10 +342,10 @@ void Move_Vert_Contaminated(MSEBoxModel *bm, int sp, int cohort, double ****this
                                     num_possible = min(num_contam_moved[ij][k][cIndex], diffden[next_box][clayer]);
 
                                     // New contam level - average of what is there and what moved in
-                                    bm->boxes[next_box].tr[clayer][cid] = (bm->boxes[next_box].tr[clayer][cid] * bm->boxes[next_box].tr[clayer][pid] * this_currentden[sp][cohort][clayer][next_box] + num_possible * localcontam[ij][k][cIndex]) / (num_possible + bm->boxes[next_box].tr[clayer][pid] * this_currentden[sp][cohort][clayer][next_box] + small_num);
+                                    bm->boxes[next_box].tr[clayer][cid] = (bm->boxes[next_box].tr[clayer][cid] * bm->boxes[next_box].tr[clayer][pid] * currentden[sp][cohort][clayer][next_box] + num_possible * localcontam[ij][k][cIndex]) / (num_possible + bm->boxes[next_box].tr[clayer][pid] * currentden[sp][cohort][clayer][next_box] + small_num);
 
                                     // Adjust local proportion
-                                    new_num_in_box = bm->boxes[next_box].tr[clayer][pid] * this_currentden[sp][cohort][clayer][next_box] + num_possible;
+                                    new_num_in_box = bm->boxes[next_box].tr[clayer][pid] * currentden[sp][cohort][clayer][next_box] + num_possible;
                                     bm->boxes[next_box].tr[clayer][pid] =  new_num_in_box / (bm->boxes[next_box].tr[clayer][den] + small_num);
 
                                     //fprintf(bm->logFile, "Time %e next_box%d-%d %s %d %s has after move prop: %e with  new_num_in_box %e den: %e\n", bm->dayt, next_box, clayer, FunctGroupArray[sp].groupCode, cohort, bm->contaminantStructure[cIndex]->contaminant_name, bm->boxes[next_box].tr[clayer][pid], new_num_in_box, bm->boxes[next_box].tr[clayer][den]);
@@ -863,21 +863,21 @@ int Init_Contaminant_Transfer_Values(MSEBoxModel *bm) {
  * Transfer contaminant to the predator or detritus group.
  *
  */
-int Group_Transfer_Contaminant(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo, HABITAT_TYPES globalHabitat, HABITAT_TYPES habitat, int toGuild, int toCohort, int fromGuild, int fromCohort, double amountTransfer, double ***spSPinfo, double initialBiomass, double dtsz, int need_prop, int caseGTC) {
+int Group_Transfer_Contaminant(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo, HABITAT_TYPES globalHabitat, HABITAT_TYPES habitat, int toGuild, int toCohort, int fromGuild, int fromCohort, double amountEaten, double ***spSPinfo, double initialBiomass, double dtsz, int need_prop, int caseGTC) {
 
 	int cIndex, pid;
 	double *tracerArray;
-	double cGroupLevel, transfer, totalBiomass, amt_exchanged, toGuild_totalBiomass = 0.0, prop_exchanged, propContam, min_num, this_num;
+	double cGroupLevel, transfer, totalBiomass, propEaten, amt_exchanged, toGuild_totalBiomass = 0.0, prop_exchanged, propContam, min_num, this_num;
 	int isGlobal = (FunctGroupArray[toGuild].diagTol == 2 && it_count == 1);
 
-	/* If the amount transfered is zero don't do anything
+	/* If the amount eaten is zero don't do anything
 	 * Not ideal to do this check inside the function - for speed purposes we should do it outside the function but that results in a huge amount of additional code.
 	 */
-	if (amountTransfer == 0.0)
+	if (amountEaten == 0.0)
 		return 0;
     
     if(isnan(dtsz)){
-        quit("Group_Transfer_Contaminant - from group %s-%d, to group %s-%d, dtsz: %e\n", FunctGroupArray[fromGuild].groupCode, fromCohort, FunctGroupArray[toGuild].groupCode, toCohort, dtsz);
+        quit("Group_Transfer_Contaminant - to group %s-%d, from group %s-%d, dtsz: %e\n", FunctGroupArray[fromGuild].groupCode, fromCohort, FunctGroupArray[toGuild].groupCode, toCohort, dtsz);
     }
 
 	if(FunctGroupArray[fromGuild].habitatType == EPIFAUNA){
@@ -886,28 +886,28 @@ int Group_Transfer_Contaminant(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo, HA
 	  tracerArray = getTracerArray(boxLayerInfo, habitat);
 	}
 
-	/* Work out the proportion transfered */
+	/* Work out the proportion eaten */
 	if (FunctGroupArray[fromGuild].groupAgeType == AGE_STRUCTURED) {
         totalBiomass = (spSPinfo[fromGuild][fromCohort][SN_id] + spSPinfo[fromGuild][fromCohort][RN_id]) * spSPinfo[fromGuild][fromCohort][DEN_id] / bm->cell_vol;
-        amountTransfer = amountTransfer / (totalBiomass + small_num);
+		propEaten = amountEaten / (totalBiomass + small_num);
 	} else {
 		//totalBiomass = tracerArray[FunctGroupArray[fromGuild].totNTracers[fromCohort]];
 
-        if(!initialBiomass)  // No actual transfer possible
+        if(!initialBiomass)  // No actual consumption possible
             return 0;
 
         totalBiomass = initialBiomass;
-        amountTransfer = amountTransfer / (totalBiomass + small_num);
+		propEaten = amountEaten / (totalBiomass + small_num);
 	}
 
     /* Sanity check */
-    if (amountTransfer > 1.0) {
-        amountTransfer = 1.0;
+    if (propEaten > 1.0) {
+        propEaten = 1.0;
     }
     
     /**
-	if ((isnan(propTransfer)) || (propTransfer > 1.0)) {
-		fprintf(stderr, "Group_Transfer_Contaminant group propTransfer level is NAN or prop > 1 - From %s-%d, in box %d-%d, propTransfer: %e amountTransfer = %e, totalBiomass = %e\n", FunctGroupArray[fromGuild].groupCode, fromCohort, bm->current_box, bm->current_layer, propTransfer, amountTransfer, totalBiomass);
+	if ((isnan(propEaten)) || (propEaten > 1.0)) {
+		fprintf(stderr, "Group_Transfer_Contaminant group propEaten level is NAN or prop > 1 - From %s-%d, in box %d-%d, propEaten: %e amountEaten = %e, totalBiomass = %e\n", FunctGroupArray[fromGuild].groupCode, fromCohort, bm->current_box, bm->current_layer, propEaten, amountEaten, totalBiomass);
 		quit("Group_Transfer_Contaminant nan or prop > 1\n");
 	}
     **/
@@ -939,21 +939,20 @@ int Group_Transfer_Contaminant(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo, HA
 		if (cGroupLevel > bm->min_pool){
 
             /**
-            if ((isnan(propTransfer)) || (propTransfer > 1.0)) {
-                fprintf(stderr, "Time: %e box %d-%d case %d Group_Transfer_Contaminant group propTransfer level is NAN or prop > 1 - From %s-%d to %s-%d propTransfer: %e amountTransfer = %e totalBiomass = %e %s cGroupLevel: %e\n", bm->dayt, bm->current_box, bm->current_layer, caseGTC, FunctGroupArray[fromGuild].groupCode, fromCohort, FunctGroupArray[toGuild].groupCode, toCohort, propTransfer, amountTransfer, totalBiomass, bm->contaminantStructure[cIndex]->contaminant_name, cGroupLevel);
+            if ((isnan(propEaten)) || (propEaten > 1.0)) {
+                fprintf(stderr, "Time: %e box %d-%d case %d Group_Transfer_Contaminant group propEaten level is NAN or prop > 1 - From %s-%d to %s-%d propEaten: %e amountEaten = %e totalBiomass = %e %s cGroupLevel: %e\n", bm->dayt, bm->current_box, bm->current_layer, caseGTC, FunctGroupArray[fromGuild].groupCode, fromCohort, FunctGroupArray[toGuild].groupCode, toCohort, propEaten, amountEaten, totalBiomass, bm->contaminantStructure[cIndex]->contaminant_name, cGroupLevel);
                 quit("Group_Transfer_Contaminant nan or prop > 1\n");
             }
             **/
 
-			//transfer = cGroupLevel * amountTransfer / dtsz;  // Need time step correction so flux makes sense
-            transfer = cGroupLevel * amountTransfer;  // Actually already a rate so ok?
+			transfer = cGroupLevel * propEaten / dtsz;  // Need time step correction so flux makes sense
 
             /**/
 			//if(isnan(transfer)){
             if(!(_finite(transfer))) {
                 fflush(bm->logFile);
-				quit("Group_Transfer_Contaminant - from group %s-%d, to group %s-%d, transfer is nan or inf, cGroupLevel= %e, amountTransfer = %e dtsz: %e\n",
-						FunctGroupArray[fromGuild].groupCode, fromCohort, FunctGroupArray[toGuild].groupCode, toCohort, cGroupLevel, amountTransfer, dtsz);
+				quit("Group_Transfer_Contaminant - to group %s-%d, from group %s-%d, transfer is nan or inf, cGroupLevel= %e, propEaten= %e dtsz: %e\n",
+						FunctGroupArray[fromGuild].groupCode, fromCohort, FunctGroupArray[toGuild].groupCode, toCohort, cGroupLevel, propEaten, dtsz);
 			}
             /**/
 
@@ -962,7 +961,7 @@ int Group_Transfer_Contaminant(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo, HA
 
             /**
             //if((((toGuild == 54) || (fromGuild == 54)) && (bm->contaminantStructure[cIndex]->sp_transfer[toGuild][toCohort][habitat] > 0.0)) && (cIndex == 3)) {
-                    fprintf(bm->logFile, "prey = %s, to %s-%d gaining %e, cGroupLevel= %e, propTransfer= %e, totalTransfer = %e amountTransfer = %e, totalBiomass= %e\n", FunctGroupArray[fromGuild].groupCode, FunctGroupArray[toGuild].groupCode, toCohort, transfer, cGroupLevel, propTransfer, bm->contaminantStructure[cIndex]->sp_transfer[toGuild][toCohort][habitat], amountTransfer, totalBiomass);
+                    fprintf(bm->logFile, "prey = %s, to %s-%d gaining %e, cGroupLevel= %e, propEaten= %e, totalTransfer = %e amountEaten = %e, totalBiomass= %e\n", FunctGroupArray[fromGuild].groupCode, FunctGroupArray[toGuild].groupCode, toCohort, transfer, cGroupLevel, propEaten, bm->contaminantStructure[cIndex]->sp_transfer[toGuild][toCohort][habitat], amountEaten, totalBiomass);
             //}
             **/
 
@@ -974,7 +973,7 @@ int Group_Transfer_Contaminant(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo, HA
 
             if (need_prop && transfer) {
                 /* Set or update the proportion contaminated */
-                amt_exchanged = amountTransfer * dtsz;
+                amt_exchanged = amountEaten * dtsz;
                 prop_exchanged = amt_exchanged / (toGuild_totalBiomass + small_num);
 
                 if( prop_exchanged > 1.0)
@@ -1087,7 +1086,6 @@ int Calculate_Species_Contaminant_Decay(MSEBoxModel *bm, BoxLayerValues *boxLaye
                 /* The current concentration in the group */
                 newValue = cGroupLevel * pow(0.5, time_step / bm->contaminantStructure[cIndex]->half_life);
                 bm->contaminantStructure[cIndex]->sp_amount_decayed[sp][cohort] = (cGroupLevel - newValue) / time_step;
-                
 			}
 		}
 	}
@@ -1830,30 +1828,4 @@ void Check_Contam_Totals(MSEBoxModel *bm) {
 
     return;
 
-}
-
-void Age_Contaminants_Store(MSEBoxModel *bm, int sp, int cohort, int nextcid, double dennow, double this_p_ageup) {
-    int cIndex, cid;
-    double cGroupLevel;
-    
-    for (cIndex = 0; cIndex < bm->num_contaminants; cIndex++) {
-        cid = FunctGroupArray[sp].contaminantTracers[cohort][cIndex];
-        cGroupLevel = bm->boxes[bm->current_box].tr[bm->current_layer][cid];
-        FunctGroupArray[sp].agingContam[nextcid][cIndex][bm->current_box][bm->current_layer] = cGroupLevel * this_p_ageup;
-        bm->boxes[bm->current_box].tr[bm->current_layer][cid] -= (cGroupLevel * this_p_ageup);
-        // Remove it here so transferred to next class with aging
-        
-    }
-}
-
-void Age_Contaminants_Update(MSEBoxModel *bm, int sp, int cohort, double denup, double dennow, double nextden, int ij, int k) {
-    int cIndex, cid;
-    //double cGroupLevel;
-    
-    for (cIndex = 0; cIndex < bm->num_contaminants; cIndex++) {
-        cid = FunctGroupArray[sp].contaminantTracers[cohort][cIndex];
-        bm->boxes[ij].tr[k][cid] += FunctGroupArray[sp].agingContam[cohort][cIndex][ij][k];
-        // Add stuff being transferred
-        //TODO: Need to think about how to handle this if the new age group isn't present in this water column and layer...
-    }
 }

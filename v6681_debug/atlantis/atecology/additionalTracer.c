@@ -102,6 +102,23 @@ double Calculate_Phosphorus_Uptake(MSEBoxModel *bm, int guild, double grow, doub
 	return uptake;
 }
 
+//double Calculate_Phosphorus_Uptake(MSEBoxModel *bm, int guild, double grow, double hN_sp, double hI_sp, double PCM, double PRatio, double biomass) {
+//
+//	double  uptake;
+//	//double P0 = FunctGroupArray[guild].speciesParams[P_min_internal_id];
+//	//double P1 = FunctGroupArray[guild].speciesParams[P_max_internal_id];
+//	double PValue = biomass * PRatio;
+//	//double growth =PValue * mum * hN_sp * hI_sp * eddy_strength * bm->eddy_scale;
+//
+//	uptake = grow * PRatio; //PValue * mum * hN_sp * hI_sp * eddy_strength * bm->eddy_scale;
+//	//uptake = growth * FunctGroupArray[guild].speciesParams[P_max_uptake_id] * ((P1 - PRatio)/(P1 - P0));// * PCM/( FunctGroupArray[guild].speciesParams[KP_id] + PCM);
+//
+//	/* Save the uptake value for later */
+//	FunctGroupArray[guild].uptakeP = uptake;
+//
+//	return uptake;
+//}
+
 /**
  *  Calculate C uptake in phytoplankton.
  *
@@ -455,10 +472,9 @@ void Calculate_Element_Flux(MSEBoxModel *bm, double *tracerArray, double *fluxAr
 							switch(FunctGroupArray[sp].groupAgeType){
 							case AGE_STRUCTURED:
 								Density = tracerArray[FunctGroupArray[sp].NumsTracers[cohort]]/bm->cell_vol;
-								elementflux = ((double)FunctGroupArray[sp].ratioGainedPred[cohort][tracerIndex]/(Density + small_num)) - (double)FunctGroupArray[sp].ratioLost[habitat][cohort][tracerIndex];
+								elementflux = ((double)FunctGroupArray[sp].ratioGainedPred[cohort][tracerIndex]/(Density + small_num))
+																		- (double)FunctGroupArray[sp].ratioLost[habitat][cohort][tracerIndex];
 
-                                fprintf(bm->logFile, "%s-%d Box %d-%d Density: %e Nums: %e cell_vol: %e ratioGainedPred: %e ratioLost: %e habitat: %d\n", FunctGroupArray[sp].groupCode, cohort, bm->current_box, bm->current_layer, Density, tracerArray[FunctGroupArray[sp].NumsTracers[cohort]], bm->cell_vol, ((double)FunctGroupArray[sp].ratioGainedPred[cohort][tracerIndex]), ((double)FunctGroupArray[sp].ratioLost[habitat][cohort][tracerIndex]), habitat);
-                                    
 								break;
 
 							case AGE_STRUCTURED_BIOMASS:
@@ -477,15 +493,17 @@ void Calculate_Element_Flux(MSEBoxModel *bm, double *tracerArray, double *fluxAr
 									- (double)FunctGroupArray[sp].ratioLost[habitat][cohort][tracerIndex] - eaten;
 
 
-								/**
-                                //if(sp == 5 && tracerIndex == c_id && cohort == 1 && bm->current_box == 15 && bm->current_layer == 3){
+								/*if(sp == 5 && tracerIndex == c_id && cohort == 1 && bm->current_box == 15 && bm->current_layer == 3){
 
 									fprintf(bm->logFile, "Box = %d\n", bm->current_box);
 									fprintf(bm->logFile, "before add flux = %e\n",fluxArray[FunctGroupArray[sp].addRatioTracers[cohort][tracerIndex]]);
 									fprintf(bm->logFile, "FunctGroupArray[%d].ratioLostPred[%d][%d][%d] = %Le\n", sp, habitat, cohort, tracerIndex,  FunctGroupArray[sp].ratioLostPred[habitat][cohort][tracerIndex]);
-									fprintf(bm->logFile, "%s - habitat %d, elementflux = %e, growth = %Le, growth due to pred = %Le, lost due to being eaten %e, ratioLost (mortality, lysis and dead)= %Le\n", FunctGroupArray[sp].groupCode, habitat, elementflux, FunctGroupArray[sp].ratioGained[habitat][cohort][tracerIndex], FunctGroupArray[sp].ratioGainedPred[cohort][tracerIndex], eaten, FunctGroupArray[sp].ratioLost[habitat][cohort][tracerIndex]);
-								//}
-                                **/
+									fprintf(bm->logFile, "%s - habitat %d, elementflux = %e, growth = %Le, growth due to pred = %Le, lost due to being eaten %e, ratioLost (mortality, lysis and dead)= %Le\n",
+											FunctGroupArray[sp].groupCode, habitat, elementflux,
+											FunctGroupArray[sp].ratioGained[habitat][cohort][tracerIndex], FunctGroupArray[sp].ratioGainedPred[cohort][tracerIndex],
+											eaten,
+											FunctGroupArray[sp].ratioLost[habitat][cohort][tracerIndex]);
+								}*/
 
 								break;
 
@@ -502,7 +520,7 @@ void Calculate_Element_Flux(MSEBoxModel *bm, double *tracerArray, double *fluxAr
 									elementflux = 0;
 
 
-								} else {
+								}else{
 									elementflux = (double)FunctGroupArray[sp].ratioGained[habitat][cohort][tracerIndex] + (double)FunctGroupArray[sp].ratioGainedPred[cohort][tracerIndex]
 										- (double)FunctGroupArray[sp].ratioLost[habitat][cohort][tracerIndex] - (double)FunctGroupArray[sp].ratioLostPred[habitat][cohort][tracerIndex];
 
@@ -592,7 +610,7 @@ void PP_uptake(MSEBoxModel *bm, int sp, double uptakeN, double uptakeP, double u
  *
  */
 void Integrate_Ratio_Variables(MSEBoxModel *bm, double *tracerArray, double *fluxArray, double tsz, double dtsz, HABITAT_TYPES habitat) {
-    double step1 = 0;
+
 	int sp, cohort, tracerIndex;
 	double ratio, elementflux, elementValue, B, Bflux = 0, newN;
 	double oldB, oldRatio;
@@ -603,10 +621,6 @@ void Integrate_Ratio_Variables(MSEBoxModel *bm, double *tracerArray, double *flu
 #endif
 
 
-    if(verbose) {
-        printf("Doing Integrate_Ratio_Variables\n");
-    }
-    
 	for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
 		Bflux = 0;
 
@@ -638,8 +652,9 @@ void Integrate_Ratio_Variables(MSEBoxModel *bm, double *tracerArray, double *flu
 								Bflux = fluxArray[FunctGroupArray[sp].totNTracers[cohort]];
 								oldB = B - Bflux * timeValue;
 
-								if(oldB <= bm->min_pool || !Bflux)
+								if(oldB <= bm->min_pool)
 									continue;
+
 
 								elementValue = oldRatio * oldB;
 								newValue = elementValue + (FunctGroupArray[sp].addRatioFluxes[cohort][tracerIndex] * timeValue);
@@ -650,13 +665,18 @@ void Integrate_Ratio_Variables(MSEBoxModel *bm, double *tracerArray, double *flu
 #ifdef NO_RATIO
 								elementflux = Bflux;
 #endif
-                                if(bm->flagratio_warn) {
-                                    if(fabs(ratio - oldRatio) > buffer_rounding){
-                                        warn("Integrate_Ratio_Variables Stop1: Group %s Box %d layer %d newN: %e oldB: %e newValue: %e it_count: %d ratio: %e B: %e habitat: %d elementValue: %e  oldRatio: %e oldB: %e num_atomic: %e timeValue: %e Bflux: %e\n", FunctGroupArray[sp].groupCode, bm->current_box, bm->current_layer, newN, oldB, newValue, it_count, ratio, B, habitat, elementValue, oldRatio, oldB, FunctGroupArray[sp].addRatioFluxes[cohort][num_atomic_id], timeValue, Bflux);
-                                    }
-                                }
+								/**/
+								//if(tracerIndex == p_id  && sp == 20){
 
-								fprintf(bm->logFile, "Group %s Box %d layer %d newN: %e oldB: %e newValue: %e it_count: %d ratio: %e B: %e habitat: %d timeValue: %e oldRatio: %e Bflux: %e oldN: %e elementValue: %e\n", FunctGroupArray[sp].groupCode, bm->current_box, bm->current_layer, newN, oldB, newValue, it_count, ratio, B, habitat, timeValue, oldRatio, Bflux, FunctGroupArray[sp].addRatioFluxes[cohort][num_atomic_id], elementValue);
+									if(fabs(ratio - oldRatio) > 1e-8){
+										printf("Group %s, Box %d, layer %d, newN = %e, oldB = %e, newValue= %e, it_count = %d, ratio= %e, B = %e, habitat= %d\n",
+											FunctGroupArray[sp].groupCode, bm->current_box, bm->current_layer,  newN, oldB, newValue, it_count, ratio, B, habitat);
+										abort();
+									}
+
+								//	fprintf(bm->logFile, "Group %s, Box %d, layer %d, newN = %e, oldB = %e, newValue= %e, it_count = %d, ratio= %e, B = %e, habitat= %d\n",
+								//			FunctGroupArray[sp].groupCode, bm->current_box, bm->current_layer,  newN, oldB, newValue, it_count, ratio, B, habitat);
+								//}/**/
 
 
 								/* Think this is right */
@@ -674,12 +694,12 @@ void Integrate_Ratio_Variables(MSEBoxModel *bm, double *tracerArray, double *flu
 									printf("Bflux = %.20e, B = %.20e, oldB = %.20e, oldB + Bflux*T = %.20e\n", Bflux, B, oldB, oldB + Bflux * timeValue);
 
 
-									quit("Integrate_Ratio_Variables Stop2:  - Box %d:%d - Group %s:%d pRatio is greater than 1.0 (%e)\n", bm->current_box, bm->current_layer,
+									quit("Integrate_Ratio_Variables - Other - Box %d:%d - Group %s:%d pRatio is greater than 1.0 (%e)\n", bm->current_box, bm->current_layer,
 											FunctGroupArray[sp].groupCode, cohort, ratio);
 								}
 #endif
 
-							} else {
+							}else{
 
 
 
@@ -722,8 +742,8 @@ void Integrate_Ratio_Variables(MSEBoxModel *bm, double *tracerArray, double *flu
 									elementflux = fluxArray[FunctGroupArray[sp].addRatioTracers[cohort][tracerIndex]];
 
 	#ifdef TURN_OFF_P_IN_VERTEBRATES
-                                    if(FunctGroupArray[sp].isVertebrate == TRUE)
-                                        continue;
+								if(FunctGroupArray[sp].isVertebrate == TRUE)
+									continue;
 	#endif
 
 									if((elementValue + (elementflux * timeValue)) <= 0.0)
@@ -737,52 +757,69 @@ void Integrate_Ratio_Variables(MSEBoxModel *bm, double *tracerArray, double *flu
 
 #ifndef NO_RATIO
 
-                                    if(bm->flagratio_warn) {
-                                        if(tracerIndex == c_id){
-                                            step1 = fabs(ratio - bm->N_to_C); // Was 0.1754
-                                            if(step1 > buffer_rounding){ // was buffer_ratio
-                                                warn( "Integrate_Ratio_Variables Stop3 at %e ratio is too different from %e: C - Group %s:%d Box %d layer %d oldB = %e newValue= %e it_count: %d ratio: %.20e B: %e habitat: %d Bflux: %.20e elementflux: %.20e flux ratio: %.20e\n", step1, bm->N_to_C, FunctGroupArray[sp].groupCode, cohort,  bm->current_box, bm->current_layer, oldB, newValue, it_count, ratio, B, habitat, Bflux, elementflux, elementflux/Bflux);
-                                            }
-                                        } else {
-                                            step1 = fabs(ratio - bm->N_to_P); // was 3e-5
-                                            if(step1 > buffer_rounding){ // was buffer_ratio
-                                                warn("Integrate_Ratio_Variables Stop4 at %e ratio is too different from %e P - Group %s-%d Box %d layer %d oldB: %e oldRatio: %e newValue: %e it_count: %d ratio: %e B: %e habitat: %d elementValue: %e elementflux: %e timeValue: %e\n", step1, bm->N_to_P, FunctGroupArray[sp].groupCode, cohort, bm->current_box, bm->current_layer, oldB, oldRatio, newValue, it_count, ratio, B, habitat, elementValue, elementflux, timeValue);
-                                            }
+									if(tracerIndex == c_id){
+										if(fabs(ratio - 0.1754) > 1e-12){
+											printf("C - Group %s:%d, Box %d, layer %d, oldB = %e, newValue= %e, it_count = %d, ratio= %.20e, B = %e, habitat= %d\n",
+												FunctGroupArray[sp].groupCode, cohort,  bm->current_box, bm->current_layer, oldB, newValue, it_count, ratio, B, habitat);
+											printf("Bflux = %.20e, elementflux = %.20e, flux ratio = %.20e\n", Bflux, elementflux, elementflux/Bflux);
+											abort();
+										}
+									}else{
+										if(fabs(ratio - 3e-05) > 1e-12){
+											printf("P - Group %s%d, Box %d, layer %d,  oldB = %e, newValue= %e, it_count = %d, ratio= %e, B = %e, habitat= %d\n",
+												FunctGroupArray[sp].groupCode, cohort, bm->current_box, bm->current_layer,   oldB, newValue, it_count, ratio, B, habitat);
+											abort();
+										}
 
-                                        }
-                                        step1 = fabs(ratio - oldRatio);
-                                        if(step1 > buffer_rounding){ // was buffer_ratio
-                                            warn("Integrate_Ratio_Variables Stop5 at %e difference in ratios too large: Group %s-%d Box %d layer %d oldB: %e newValue: %e it_count: %d ratio: %e, B: %e habitat %d\n", step1, FunctGroupArray[sp].groupCode, cohort, bm->current_box, bm->current_layer,   oldB, newValue, it_count, ratio, B, habitat);
-                                        }
+									}
+									if(fabs(ratio - oldRatio) > 1e-12){
+										printf("Group %s%d, Box %d, layer %d, oldB = %e, newValue= %e, it_count = %d, ratio= %e, B = %e, habitat= %d\n",
+											FunctGroupArray[sp].groupCode, cohort, bm->current_box, bm->current_layer,   oldB, newValue, it_count, ratio, B, habitat);
+										abort();
+									}
 
 
-                                        /**/
-                                        //if(fabs(ratio - oldRatio) > buffer_rounding){
-                                            printf("Group %s-%d Box %d layer %d oldB: %e newValue: %e elementValue: %e elementflux: %e it_count: %d ratio: %e, B: %e, Bflux: %e habitat= %d\n", FunctGroupArray[sp].groupCode, cohort, bm->current_box, bm->current_layer, oldB, newValue, elementValue, elementflux, it_count, ratio, B, Bflux, habitat);
+									/*if(fabs(ratio - oldRatio) > 1e-5){
+										printf("Group %s, Box %d, layer %d, oldB = %e, newValue= %e, it_count = %d, ratio= %e, B = %e, habitat= %d\n",
+											FunctGroupArray[sp].groupCode, bm->current_box, bm->current_layer,  oldB, newValue, it_count, ratio, B, habitat);
 
-                                            fprintf(bm->logFile, "Group %s-%d Box %d layer %d newN: %e oldB: %e newValue: %e it_count: %d ratio: %e B: %e habitat: %d timeValue: %e oldRatio: %e Bflux: %e oldN: %e elementValue: %e elementflux: %e\n", FunctGroupArray[sp].groupCode, cohort,  bm->current_box, bm->current_layer, newN, oldB, newValue, it_count, ratio, B, habitat, timeValue, oldRatio, Bflux, FunctGroupArray[sp].addRatioFluxes[cohort][num_atomic_id], elementValue, elementflux);
 
-                                            //quit("\n");
-                                        //}
-                                        /**/
 
-                                        /**
-                                        if(tracerIndex == p_id && sp == 32 && cohort == 0 && bm->current_box == 1 && bm->current_layer == 0){
-                                            fprintf(bm->logFile, "B = %.8e, oldB = %.8e, Bflux = %.8e\n", B, oldB, Bflux);
+										printf("Group %s, cohort %d, B= %e, Bflux = %e, elementValue = %e, elementflux= %e, newValue= %e, ratio = %e\n",
+																					FunctGroupArray[sp].groupCode, cohort, B, Bflux, elementValue, elementflux, newValue, ratio);
 
-                                            fprintf(bm->logFile, "New ratio = %e\n", tracerArray[FunctGroupArray[sp].addRatioTracers[cohort][tracerIndex]]);
+										fprintf(bm->logFile, "Group %s, cohort %d, B= %e, Bflux = %e, elementValue = %e, elementflux= %e, newValue= %e, ratio = %e, oldRatio= %e\n",
+																															FunctGroupArray[sp].groupCode, cohort, B, Bflux, elementValue, elementflux, newValue, ratio, oldRatio);
+										abort();
+									}*/
 
-                                        }
-                                        **/
-                                    }
+									/*
+									if(tracerIndex == p_id && sp == 32 && cohort == 0 && bm->current_box == 1 && bm->current_layer == 0){
+										fprintf(bm->logFile, "B = %.8e, oldB = %.8e, Bflux = %.8e\n", B, oldB, Bflux);
+
+										fprintf(bm->logFile, "New ratio = %e\n", tracerArray[FunctGroupArray[sp].addRatioTracers[cohort][tracerIndex]]);
+
+									}*/
+
 									/*Check the tracers */
 									if (!(_finite(tracerArray[FunctGroupArray[sp].addRatioTracers[cohort][tracerIndex]]))) {
-										quit("Integrate_Ratio_Variables tracer is infinite. Group %s, cohort %d, B= %e, elementValue = %e, elementflux= %e, newValue= %e, ratio = %e\n",
+										printf("Integrate_Ratio_Variables tracer is infinite. Group %s, cohort %d, B= %e, elementValue = %e, elementflux= %e, newValue= %e, ratio = %e\n",
 											FunctGroupArray[sp].groupCode, cohort, B, elementValue, elementflux, newValue, ratio);
+										abort();
 									}
 
 									if (ratio > 1.0 || ratio < 0) {
-										quit("Integrate_Ratio_Variables Stop6 - Box %d:%d - Group %s:%d pRatio is greater than 1.0 (%e) B: %e, Bflux: %e\nElement %s %s:%d box %d:%d it_count: %d habitat: %d oldRatio: %e newRatio: %e elementFlux: %.20e element: %e (newElementValue: %e) Biomass: %e Bflux: %e T: %e\nBflux: %.20e B: %.20e oldB: %.20e oldB + Bflux*T: %.20e\n", bm->current_box, bm->current_layer, FunctGroupArray[sp].groupCode, cohort, ratio, B, Bflux, bm->atomicRatioInfo->atomicName[tracerIndex], FunctGroupArray[sp].groupCode, cohort, bm->current_box, bm->current_layer, it_count, habitat, oldRatio, ratio, elementflux, elementValue, newValue, B, Bflux, timeValue, Bflux, B, oldB, oldB + Bflux * timeValue);
+										fprintf(stderr, "B = %e, Bflux = %e\n", B, Bflux);
+
+										printf("\n\nElement %s, %s:%d, box %d:%d, it_count = %d, habitat = %d, oldRatio = %e, newRatio = %e, elementFlux = %.20e, element = %e, (newElementValue = %e), Biomass = %e, Bflux = %e, T = %e\n",
+												bm->atomicRatioInfo->atomicName[tracerIndex], FunctGroupArray[sp].groupCode, cohort, bm->current_box,
+												bm->current_layer, it_count, habitat, oldRatio, ratio, elementflux, elementValue, newValue, B, Bflux, timeValue);
+
+										printf("Bflux = %.20e, B = %.20e, oldB = %.20e, oldB + Bflux*T = %.20e\n", Bflux, B, oldB, oldB + Bflux * timeValue);
+
+
+										quit("Integrate_Ratio_Variables - Other - Box %d:%d - Group %s:%d pRatio is greater than 1.0 (%e)\n", bm->current_box, bm->current_layer,
+												FunctGroupArray[sp].groupCode, cohort, ratio);
 									}
 #endif
 								}
@@ -792,14 +829,17 @@ void Integrate_Ratio_Variables(MSEBoxModel *bm, double *tracerArray, double *flu
 #ifdef NO_RATIO
 							diff = (elementflux - Bflux);
 
-							if(fabs(diff) > buffer_rounding){
+							if(fabs(diff) > 1e-15){
 								fprintf(bm->logFile, "tracer = %d\n", FunctGroupArray[sp].addRatioTracers[cohort][tracerIndex]);
 								fprintf(bm->logFile,"\n\nElement %s, %s:%d, box %d:%d, it_count = %d, habitat = %d, oldRatio = %e, newRatio = %e, elementFlux = %.20e, element = %e, (newElementValue = %e), Biomass = %e, Bflux = %e, T = %e\n",
 										bm->atomicRatioInfo->atomicName[tracerIndex], FunctGroupArray[sp].groupCode, cohort, bm->current_box,
 										bm->current_layer, it_count, habitat, oldRatio, ratio, elementflux, elementValue, newValue, B, Bflux, timeValue);
+
 								fprintf(bm->logFile, "Bflux = %.20e, B = %.20e, oldB = %.20e, oldB + Bflux*T = %.20e\n", Bflux, B, oldB, oldB + Bflux * timeValue);
+
 								fprintf(bm->logFile, "diff = %.20e\n", diff);
-								quit("Integrate_Ratio_Variables Stop7: fabs(diff) > %e as diff: %e", buffer_rounding, diff);
+
+								quit("");
 							}
 #endif
 
@@ -1112,14 +1152,12 @@ static void Gain_Element_Predation(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo
 		/* Keep track of the element lost/gained due to toGuildation */
 		FunctGroupArray[toGuild].ratioGainedPred[toCohort][tracerIndex] += pLost;
 
-		/**/
-		//if(amount > 0 && tracerIndex == c_id && toGuild == 5 && toCohort == 1 && bm->current_box == 15 && bm->current_layer == 3){
-        if(amount > 0 && toGuild == 0){
+		/**
+		if(amount > 0 && tracerIndex == c_id && toGuild == 5 && toCohort == 1 && bm->current_box == 15 && bm->current_layer == 3){
 			fprintf(bm->logFile, "habitatType = %d, after %s, amount = %e, ratio = %e, FunctGroupArray[toGuild].ratioGainedPred[toCohort][tracerIndex] = %Le\n",
 					habitatType, FunctGroupArray[fromGuild].groupCode, amount, pRatio, FunctGroupArray[toGuild].ratioGainedPred[toCohort][tracerIndex]);
 
-		}
-        /**/
+		}**/
 	}
 }
 
@@ -1231,10 +1269,11 @@ void Vertebrates_Transfer_To_Pred(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo,
 						}
 
 						Gain_Element_Predation(bm, boxLayerInfo, WC, guild, cohort, prey, 0, amount);
-					} else if (FunctGroupArray[prey].groupType == LAB_DET) {
+					}
+					else if (FunctGroupArray[prey].groupType == LAB_DET){
 						Gain_Element_Predation(bm, boxLayerInfo, (HABITAT_TYPES)habitat, guild, cohort, LabDetIndex, 0, densityScalar * E3_sp * spGRAZEinfo[prey][kij][habitat]);
 
-					} else if(FunctGroupArray[prey].groupType == REF_DET) {
+					}else if(FunctGroupArray[prey].groupType == REF_DET){
 						Gain_Element_Predation(bm, boxLayerInfo, (HABITAT_TYPES)habitat, guild, cohort, RefDetIndex, 0, densityScalar * E4_sp * spGRAZEinfo[prey][kij][habitat]);
 
 					}

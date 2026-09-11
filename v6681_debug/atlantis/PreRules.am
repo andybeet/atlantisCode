@@ -9,9 +9,8 @@ INCLUDES = $(shell pkg-config --cflags libxml-2.0) \
 # -I$(top_srcdir)/atlink/include  -I$(top_srcdir)/atCLAMLink/include
 
 # Comment out first option and uncomment second option for for OPT if on Apple M1 chips 
-#OPT = -msse2 -mfpmath=sse
+OPT = -msse2 -mfpmath=sse
 #OPT = -mcpu=apple-m1
-OPT = -mtune=native
 
 DBG = -g
 #-pg
@@ -35,11 +34,13 @@ WARN += -Warray-bounds
 #WARN += -Werror
 
 # Comment out for Mac
-#WARN += -Wformat-overflow
+WARN += -Wunused-but-set-variable
+WARN += -Wno-error=unused-but-set-variable
+WARN += -Wformat-overflow
 
 # Needed for Docker (uncomment if commented out)
-WARN += -Wno-error=unused-but-set-variable
 WARN += -Wno-error=misleading-indentation
+WARN += -Wno-error=unused-but-set-variable
 WARN += -Wno-error=implicit-function-declaration
 
 # Comment out to run Docker - needed on Mac
@@ -106,11 +107,11 @@ AM_CFLAGS += -D RASSESS_LINK_ENABLED
 #
 # R_HOME = $(shell R RHOME)
 # on Ubuntu Linux
-R_HOME = /usr/lib/R
-R_BASE = /usr/lib/R
+# R_HOME = /usr/lib/R
+# R_BASE = /usr/lib/R
 # on OS X
-#R_BASE = /Library/Frameworks/R.framework/Resources
-#R_HOME = /Library/Frameworks/R.framework/Resources
+R_BASE = /Library/Frameworks/R.framework/Resources
+R_HOME = /Library/Frameworks/R.framework/Resources
 AM_CFLAGS += -I$(R_BASE)/include -I/usr/share/R/include
 LIBS += -L$(R_BASE)/lib -lR
 endif

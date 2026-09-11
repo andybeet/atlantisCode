@@ -215,7 +215,7 @@ SpeciesParamStruct speciesParamStructArray[tot_prms] =
 
 		/* Temperature related parameters */
 		{ "FLAG_Q10", q10_id, "^q10_([A-Z]{2,3})$", no_checking, 1.0, SP_ALL },
-		{ "FLAG_Q10_METHOD", q10_method_id, "^q10_method_", integer_check, 1.0, SP_NOT_DET },
+		{ "FLAG_Q10_METHOD", q10_method_id, "^q10_method_", integer_check, 1.0, SP_ALL },
 		{ "FLAG_Q10_OPTIMAL_TEMP", q10_optimal_temp_id, "^q10_optimal_temp_", no_checking, 1.0, SP_Q10 },
 		{ "FLAG_Q10_CORRECTION", q10_correction_id, "^q10_correction_", no_checking, 1.0, SP_Q10 },
 
@@ -400,7 +400,6 @@ SpeciesParamStruct speciesParamStructArray[tot_prms] =
 		{ "SP_Concern", sp_concern_id, "", binary_check, 1.0, SP_FISHED },
 		{ "BasketQuotaFlag", basketSP_id, "^basketSP", binary_check, 1.0, SP_FISHED },
 		{ "BasketSize", basket_size_id, "^basket_size", integer_check, 1.0, SP_FISHED },
-        { "CompanionSpMax", max_co_sp_id, "^max_co_sp_", integer_check, 1.0, SP_FISHED },
 		{ "CompanionTACType", coType_id, "^coType_", integer_check, 1.0, SP_FISHED },
 		{ "TACResetPeriod", tac_resetperiod_id, "^tac_resetperiod", no_checking, 1.0, SP_FISHED },
         
@@ -517,7 +516,6 @@ SpeciesParamStruct RBCSpeciesParamStructArray[num_rbc_species_params_id] =
         { "FLAG_TIER3SIG", Tier3Sig_id, "^Tier3Sig_", no_checking, 1, SP_IMPACTED },
         
         { "FLAG_TRIGGERSP", isTriggerSpecies_id, "^isTriggerSpecies_", integer_check, 1, SP_IMPACTED },
-        { "FLAG_TRIGTHRESH", trigger_threshold_id, "^trigger_threshold_", no_checking, 1, SP_IMPACTED },
         { "FLAG_USERBCAVG", UseRBCAveraging_id, "^UseRBCAveraging_", integer_check, 1, SP_IMPACTED },
         
 	/** reference levels */
@@ -608,7 +606,7 @@ SpeciesParamStruct RBCSpeciesParamStructArray[num_rbc_species_params_id] =
         
     // Ratpack parameters
         { "FLAG_LFSSLIM", LFSSlim_id, "LFSSlim_", integer_check, 1, SP_IMPACTED },
-        { "FLAG_AFSSLIM", AFSSlim_id, "AFSSlim_", integer_check, 1, SP_IMPACTED },
+        { "FLAG_LFSSLIM", AFSSlim_id, "LFSSlim_", integer_check, 1, SP_IMPACTED },
         { "FLAG_NSURVEY", NumSurvey_id, "NumSurvey_", integer_check, 1, SP_IMPACTED },
         { "FLAG_REGIMEYR", Regime_year_assess_id, "Regime_year_assess_", integer_check, 1, SP_IMPACTED },
         { "FLAG_NBLOCK", NblockPattern_id, "NblockPattern_", integer_check, 1, SP_IMPACTED },
@@ -618,11 +616,7 @@ SpeciesParamStruct RBCSpeciesParamStructArray[num_rbc_species_params_id] =
         { "FLAG_MSASSESS", MultispAssessType_id, "MultispAssessType_", integer_check, 1, SP_IMPACTED },
         { "FLAG_INDIC_SP", mgt_indicator_id, "mgt_indicator_", integer_check, 1, SP_IMPACTED },
         { "FLAG_INITMGMT_CAT", init_mgt_category_id, "init_mgt_category_", integer_check, 1, SP_IMPACTED },
-        { "FLAG_INITMGMT_SP", init_mgt_sp_id, "init_mgt_sp_", integer_check, 1, SP_IMPACTED },
-        
-    // PGMSY parameters
-        { "FLAG_PGMSYALPHA", PGMSYBHalpha_id, "^PGMSYBHalpha_", no_checking, 1, SP_FISHED },
-        { "FLAG_PGMSYBETA", PGMSYBHbeta_id, "^PGMSYBHbeta_", no_checking, 1, SP_FISHED }
+        { "FLAG_INITMGMT_SP", init_mgt_sp_id, "init_mgt_sp_", integer_check, 1, SP_IMPACTED }
 	};
 
 
@@ -637,9 +631,7 @@ char AtlantisXMLObjectNAMES[NUM_ATLANTIS_NODE_TYPES][3][100] =
 		{ "CohortValue", "CohortName", "AttributeValue" },
 		{ "SexValue", "SexName", "AttributeValue" },
 		{ "FisheryValue", "FisheryName", "AttributeValue" },
-		{ "FisheyGroupValue", "GroupName", "AttributeValue" },
-        { "CompanionValue", "CompanionName", "AttributeValue" }
-    };
+		{ "FisheyGroupValue", "GroupName", "AttributeValue" } };
 
 
 char AtlantisXMLAttributeTypeStrings[9][100] =

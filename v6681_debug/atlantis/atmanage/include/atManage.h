@@ -56,13 +56,13 @@
 /***********************************************************************************
 Modelling variables for control of processes within the model
 */
-
-
 extern int need_discard;
 extern int /***catchind, */*flagdropeffort, *MPAKeyMap, *checkedbox;
 
+
 /* External parameters */
 extern double H2Otemp, tot_dyn_sea_area;
+
 extern int it_count, waterboundary;
 
 
@@ -106,14 +106,6 @@ extern int flagcount;
 
 extern double k_avgcount, k_varcount;
 
-
-/**************************************************************************
- Needed for close kin - leave in atCLoseKin.c for now, may move here later  */
-/*
-double *nsamps_y, ***nsamps_sya, *x, *sx, **inv_totfec_sy, ***n_sya, ****psurv_syay, *****Pr_PO_syaya,
-    *****Pr_HS_syaya, ****Pr_GG_yaya, ****Pr_HS_yaya, *****ncomps_PO_syaya, ****ncomps_HS_yaya,
-    *****Ekin_HS_syaya, *****Ekin_PO_syaya, *****sim_nkin_PO, *****sim_nkin_HS;
- */
 
 /**************************************************************************
   Function prototypes
@@ -165,7 +157,6 @@ void SS330Assessment(MSEBoxModel *bm, int sp, int year, FILE *llogfp);
 void writeDynTier4inputfile(MSEBoxModel *bm, int sp, int year, FILE *datfid, FILE *ctlfid);
 void setRBC(MSEBoxModel *bm, int species, int year, FILE *llogfp);
 
-void Do_Atlantis_PGMSY(MSEBoxModel *bm, int this_year);
 
 #ifdef RASSESS_LINK_ENABLED
 /* R related */

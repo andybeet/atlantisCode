@@ -361,7 +361,7 @@ void writeAnnCatch(FILE *fid, FILE *fid2, FILE *fid3, MSEBoxModel *bm, FILE *llo
 	double catch;
 
 	if (verbose > 1)
-        printf( "Write total catch information\n");
+		fprintf(stderr, "Write total catch information\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);
@@ -387,7 +387,6 @@ void writeAnnCatch(FILE *fid, FILE *fid2, FILE *fid3, MSEBoxModel *bm, FILE *llo
 		}
 	}
 	fprintf(fid, "\n");
-    fflush(fid);
 
 	/* Write discard values */
 	for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
@@ -399,7 +398,6 @@ void writeAnnCatch(FILE *fid, FILE *fid2, FILE *fid3, MSEBoxModel *bm, FILE *llo
 	}
 
 	fprintf(fid2, "\n");
-    fflush(fid2);
 
 	/* Write recreational fisheries catches */
 	for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
@@ -415,7 +413,6 @@ void writeAnnCatch(FILE *fid, FILE *fid2, FILE *fid3, MSEBoxModel *bm, FILE *llo
 		}
 	}
 	fprintf(fid3, "\n");
-    fflush(fid3);
 
 	return;
 }
@@ -425,7 +422,7 @@ void writeAnnCatchPerFishery(FILE *fid, MSEBoxModel *bm, FILE *llogfp) {
 	double catch_2_print = 0;
 
 	if (verbose > 1)
-        printf( "Write catch per fishery information\n");
+		fprintf(stderr, "Write catch per fishery information\n");
 	fprintf(llogfp, "Write catch per fishery information\n");
 
 	/* Write catch values */
@@ -456,7 +453,7 @@ void writeAnnDiscardPerFishery(FILE *fid, MSEBoxModel *bm, FILE *llogfp) {
 	double discard_2_print = 0;
 
 	if (verbose > 1)
-        printf( "Write discards per fishery information\n");
+		fprintf(stderr, "Write discards per fishery information\n");
 
 	/* Write discard values */
 	for (fishery_id = 0; fishery_id < bm->K_num_fisheries; fishery_id++) {
@@ -480,7 +477,7 @@ void writeAnnEffort(FILE *fid, MSEBoxModel *bm, FILE *llogfp) {
 	double toteffort = 0;
 
 	if (verbose > 1)
-        printf( "Write total effort information\n");
+		fprintf(stderr, "Write total effort information\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);

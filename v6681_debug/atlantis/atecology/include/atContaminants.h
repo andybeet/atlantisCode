@@ -17,8 +17,6 @@ void Contaminant_Record_Death(MSEBoxModel *bm, int sp, int cohort, double amount
 void Contaminant_Write_Contact_Record(MSEBoxModel *bm);
 void Contaminant_Close_Contact_Record(MSEBoxModel *bm);
 void Change_Contaminant_Levels(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo, HABITAT_TYPES habitat, double dtsz, int offset);
-void Age_Contaminants_Store(MSEBoxModel *bm, int sp, int cohort, int nextcid, double dennow, double this_p_ageup);
-void Age_Contaminants_Update(MSEBoxModel *bm, int sp, int cohort, double denup, double dennow, double nextden, int ij, int k);
 
 void Contaminant_Update_ContactMort_Record(MSEBoxModel *bm, int sp, int cohort);
 void Calculate_Contaminant_Q10_Corrections(MSEBoxModel *bm, BoxLayerValues *boxLayerInfo, HABITAT_TYPES habitat);

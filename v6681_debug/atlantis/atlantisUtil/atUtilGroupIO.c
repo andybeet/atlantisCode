@@ -330,13 +330,8 @@ int Util_Read_Functional_Group_XML(MSEBoxModel *bm, char *fileName, FILE *llogfp
 			Util_XML_Get_Value_String(convertedXMLFileName, ATLANTIS_ATTRIBUTE, TRUE, groupNode, "GroupType", varStr);
 
             /* Check fished vs impacted set up */
-            if (FunctGroupArray[groupIndex].isFished && !FunctGroupArray[groupIndex].isImpacted) {
-                quit("Util_Read_Functional_Group_XML: you have %s as fished but not impacted, set impacted to 1 for this group to continue please (i.e. if isFished 1 then isImpacted is 1)\n", FunctGroupArray[groupIndex].groupCode);
-            }
-            
-            if (FunctGroupArray[groupIndex].isImpacted) {
-                bm->K_max_impacted_sp = groupIndex;
-            }
+            if (FunctGroupArray[groupIndex].isFished && !FunctGroupArray[groupIndex].isImpacted)
+                quit("Util_Read_Functional_Group_XML: you have %s as fished but not impacted, set impacted to 1 for this group to continue please\n", FunctGroupArray[groupIndex].groupCode);
 
 			/* Find the correct invert type */
 			found = FALSE;
@@ -728,7 +723,6 @@ int Util_Read_Functional_Group_XML(MSEBoxModel *bm, char *fileName, FILE *llogfp
 
 		/* Set to Null now so we can work out if its allocated later */
 		FunctGroupArray[i].co_sp = NULL;
-        FunctGroupArray[i].co_sp_catch = NULL;
 
 		if (FunctGroupArray[i].isVertebrate == TRUE) {
 			FunctGroupArray[i].structNTracers = Util_Alloc_Init_1D_Int(FunctGroupArray[i].numCohortsXnumGenes, -1);
@@ -888,7 +882,6 @@ int Util_Read_Functional_Group_XML(MSEBoxModel *bm, char *fileName, FILE *llogfp
             FunctGroupArray[i].contamPropTracers = Util_Alloc_Init_2D_Int(bm->num_contaminants, FunctGroupArray[i].numCohorts, 0);
 			FunctGroupArray[i].contaminantSpMort = Util_Alloc_Init_1D_Double(FunctGroupArray[i].numCohorts, 0.0);
 			FunctGroupArray[i].calcCLinearMort = Util_Alloc_Init_2D_Double(3, FunctGroupArray[i].numCohortsXnumGenes, 0.0);
-            FunctGroupArray[i].agingContam = Util_Alloc_Init_4D_Double((bm->wcnz+bm->sednz), bm->nbox, bm->num_contaminants, FunctGroupArray[i].numCohorts, 0);
 		}
 
 		if (FunctGroupArray[i].numMoveEntries > 0)
@@ -1193,7 +1186,6 @@ void Free_Functional_Group_Memory(MSEBoxModel *bm) {
             i_free2d(FunctGroupArray[i].contamPropTracers);
             free(FunctGroupArray[i].contaminantSpMort);
             free2d(FunctGroupArray[i].calcCLinearMort);
-            free4d(FunctGroupArray[i].agingContam);
         }
 
         free2d(FunctGroupArray[i].max_scalar);
@@ -1281,8 +1273,6 @@ void Free_Functional_Group_Memory(MSEBoxModel *bm) {
 
         if (FunctGroupArray[i].co_sp)
             i_free1d(FunctGroupArray[i].co_sp);
-        if (FunctGroupArray[i].co_sp_catch)
-            free2d(FunctGroupArray[i].co_sp_catch);
 	}
 
 	free(FunctGroupArray);

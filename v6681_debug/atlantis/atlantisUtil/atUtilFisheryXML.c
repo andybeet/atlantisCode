@@ -161,8 +161,8 @@ SpeciesParamStruct FisheryGroupParamsArray[numGroupFisheryParams] =
 		{ "GroupSelectivity", sel_id, "^sel_[A-Z]{2,3}$", no_checking, 1.0, SP_FISHED },
 
 		{ "EscapeProportion", p_escape_id, "^p_escape_", no_checking, 1.0, SP_FISHED },
-		{ "EscapeCoefficient", Ka_escape_id, "^Ka_escape_", no_checking, 1.0, SP_FISHED },
-		{ "EscapeExponent", Kb_escape_id, "^Kb_escape_", no_checking, 1.0, SP_FISHED },
+		{ "EscapeCoefficient", Ka_escape_id, "^Ka_escape_", proportion_check, 1.0, SP_FISHED },
+		{ "EscapeExponent", Kb_escape_id, "^Kb_escape_", proportion_check, 1.0, SP_FISHED },
 
 		{ "FixedDiscardProportion", FFCDR_id, "^FFCDR_[A-Z]{2,3}$", proportion_check, 1.0, SP_FISHED },
 		{ "AgeDependantDiscarding", FC_case_id, "^FC_case", binary_check, 1.0, SP_FISHED },
@@ -181,6 +181,8 @@ SpeciesParamStruct FisheryGroupParamsArray[numGroupFisheryParams] =
 		{ "TotalAllowableCatch", TAC_id, "^TAC_[A-Z]", no_checking, 1.0, SP_FISHED },
 
 	/* TAC_Parameters */
+		{ "CompanionSpeciesRatio", co_sp_catch_id, "^co_sp_catch_", no_checking, 1.0, SP_FISHED },
+		{ "SecondCompanionSpeciesRatio", co_sp_catch2_id, "^co_sp_catch2_", no_checking, 1.0, SP_FISHED },
 		{ "ProportionSpawningClosed", prop_spawn_close_id, "^prop_spawn_close_", no_checking, 1.0, SP_FISHED },
 
 	/* Population threshold values */
@@ -564,3 +566,5 @@ void Util_XML_Read_Vert_Fishery_Param(MSEBoxModel *bm, char *fileName, xmlNodePt
 	}
 	free(nodeName);
 }
+
+

@@ -1052,9 +1052,7 @@ void Calculate_BiTAC(MSEBoxModel *bm, FILE *llogfp) {
 				for (bim = 0; bim < 6; bim++) {
 					sumBiTAC = 0;
 					for (i = 0; i < bm->K_num_fisheries; i++) {
-                        if(!FunctGroupArray[sp].isTAC || (bm->TACamt[sp][nf][now_id] < no_quota)) {
-                            sumBiTAC += bm->BiTAC_sp[bim][nreg][sp][now_id] * bm->TACamt[sp][i][now_id];
-                        }
+						sumBiTAC += bm->BiTAC_sp[bim][nreg][sp][now_id] * bm->TACamt[sp][i][now_id];
 					}
 					bm->BiTAC_sp[bim][nreg][sp][now_id] = sumBiTAC;
 				}

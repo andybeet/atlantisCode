@@ -331,14 +331,14 @@ void solarIrradiance(MSEBoxModel *bm, double ***newwattr, FILE *llogfp) {
 			for (b = 0; b < bm->nbox; b++) {
 				bm->boxes[b].swr = tsEvalXY(bm->swr, bm->swr_id, ask_t, bm->boxes[b].inside.x, bm->boxes[b].inside.y);
 				if (!(_finite(bm->boxes[b].swr))) {
-					quit("sourceSink - box: %d, Invalid value calculated for solar radiation 1 - ask_t: %e x: %e y: %e swr_id: %d\n", b, ask_t, bm->boxes[b].inside.x, bm->boxes[b].inside.y, bm->swr_id);
+					quit("sourceSink - box: %d, Invalid value calculated for solar radiation.\n", b);
 				}
 			}
 		} else {
 			for (b = 0; b < bm->nbox; b++) {
 				bm->boxes[b].swr = tsEvalR(bm->swr, bm->swr_id, ask_t, bm->swr_rewindid);
 				if (!(_finite(bm->boxes[b].swr))) {
-					quit("sourceSink - box: %d, Invalid value calculated for solar radiation 2 - ask_t: %e x: %e y: %e swr_id: %d\n", b, ask_t, bm->boxes[b].inside.x, bm->boxes[b].inside.y, bm->swr_id);
+					quit("sourceSink - box: %d, Invalid value calculated for solar radiation.\n", b);
 				}
 			}
 		}
@@ -537,7 +537,7 @@ void sourcesink_init(MSEBoxModel *bm) {
 		for (b = 0; b < bm->nbox; b++) {
 			bm->boxes[b].swr = tsEvalXY(bm->swr, bm->swr_id, ask_t, bm->boxes[b].inside.x, bm->boxes[b].inside.y);
 			if (!(_finite(bm->boxes[b].swr))) {
-				quit("ERROR - sourceSink - box: %d, Invalid value calculated for solar radiation 3 - ask_t: %e x: %e y: %e swr_id: %d\n", b, ask_t, bm->boxes[b].inside.x, bm->boxes[b].inside.y, bm->swr_id);
+				quit("ERROR - sourceSink - box: %d, Invalid value calculated for solar radiation.\n", b);
 			}
 		}
 	}

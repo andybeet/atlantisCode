@@ -72,6 +72,7 @@ extern double k_pattern;
 extern double k_patches;
 extern double k_mismatch;	/** Reduction in effectiveness of gear due to mismatch in watercolumn of gear and vertebrates*/
 
+extern double ***selectivity;	/** Constant selectivity per cohort or stage for each group (for the invertebrates it is identical to the entries above for constant selectivity regardless of size.*/
 extern double ***FFCDR;			/** Array of discard rates */
 extern double ***SELchange;		/** Changes in selectivity through time*/
 extern double ***Pchange;

@@ -608,14 +608,12 @@ double Effort_Restrict_Check(MSEBoxModel *bm, int fishery_id, int flagmanage, in
 
 	if (!flagmanage) {
 		sp_no_adapt_mgmt = 1;
-    } else if (flagmanage == stock_adapt_mgmt) {
+	} else if (flagmanage == stock_adapt_mgmt)
 		sp_stock_adapt_mgmt = 1;
-    }
 
 	/* Also apply stock based management if using effort based MSY levers */
-    if (bm->FISHERYprms[fishery_id][use_msy_effort_id]) {
+	if (bm->FISHERYprms[fishery_id][use_msy_effort_id])
 		sp_stock_adapt_mgmt = 1;
-    }
 
 	/* No adaptive management - do nothing */
 	if (sp_no_adapt_mgmt) {
@@ -2213,12 +2211,16 @@ void Calculate_Port_Contrib(MSEBoxModel *bm, int fishery_id, int flagspeffortmod
  * \brief  US management stype - cumualtive trip limits based off TAC, and once TAC exhausted then trigger spatial management actions
  */
 void Manage_Visit_Council(MSEBoxModel *bm, FILE *llogfp) {
-	int do_stuff, nf, nreg, sp, tripped, overfished_sp, delay, implement_BiM, bim, ij, correct_reg, nd, QuarterOfYear, in_box, flagTACparticipate, co_sp, co_sp2, companion_ok, min_delay, flagfcmpa, Kreg;
-	double regTAC_scale, regC_scale, biom_ratio, FCperiod, other_biTAC_reg, TAC, CumCatch, catch_ratio, regTAC_scale_cosp = 0, regC_scale_cosp = 0, TAC_cosp, CumCatch_cosp, prop_yr_changed, catch_ratio_cosp;
+	int do_stuff, nf, nreg, sp, tripped, overfished_sp, delay, implement_BiM, bim, ij, correct_reg, nd, QuarterOfYear, in_box, flagTACparticipate, co_sp,
+			co_sp2, check_companion, companion_ok, do_sp1, do_sp2, min_delay, flagfcmpa, Kreg;
+	double regTAC_scale, regC_scale, biom_ratio, FCperiod, other_biTAC_reg, TAC, CumCatch, catch_ratio, regTAC_scale_cosp = 0, regTAC_scale_cosp2  = 0, regC_scale_cosp = 0,
+			regC_scale_cosp2 = 0, TAC_cosp1, TAC_cosp2, CumCatch_cosp1, CumCatch_cosp2, prop_yr_changed, catch_ratio_cosp, catch_ratio_cosp2;
 
 	do_stuff = 0;
-	TAC_cosp = 0;
-	CumCatch_cosp = 0;
+	TAC_cosp1 = 0;
+	TAC_cosp2 = 0;
+	CumCatch_cosp1 = 0;
+	CumCatch_cosp2 = 0;
 	implement_BiM = 0;
 	/* If no council needed do not enter this routine */
 	if (!bm->Council_needed){
@@ -2384,63 +2386,87 @@ void Manage_Visit_Council(MSEBoxModel *bm, FILE *llogfp) {
 					catch_ratio = CumCatch / (TAC + small_num);
 					if (catch_ratio < 1.0) {
 						/* Rescaling necessary - but only if companion species would be worse off, so check companions.*/
-                        
-                        for (co_sp = 0; co_sp < FunctGroupArray[sp].speciesParams[max_co_sp_id]; co_sp++ ) {
-                            co_sp2 = FunctGroupArray[sp].co_sp[co_sp];
-                            
-                            if ((co_sp2 < 0) || (co_sp2 > bm->K_max_impacted_sp) || (FunctGroupArray[co_sp2].isFished == FALSE)) {
-                                continue;
-                            }
+						co_sp = (int) (FunctGroupArray[sp].co_sp[0]);
+						co_sp2 = (int) (FunctGroupArray[sp].co_sp[1]);
 
-                            regTAC_scale_cosp = bm->RegionalData[co_sp2][nreg][reg_tac_id];
-							regC_scale_cosp = bm->RegionalData[co_sp2][nreg][reg_catch_id];
-							TAC_cosp = 0;
-                            CumCatch_cosp = 0.0;
-                            companion_ok = 1;
-                            
+						check_companion = 0;
+						if ((co_sp != -1 && FunctGroupArray[co_sp].isFished == TRUE) || (co_sp2 != -1 && FunctGroupArray[co_sp2].isFished == TRUE)) {
+							check_companion = 1;
+							companion_ok = 0;
+						} else {
+							/* No companions to check */
+							companion_ok = 1;
+						}
+
+						if (check_companion) {
+							do_sp1 = 0;
+							if (co_sp != -1 && FunctGroupArray[co_sp].isFished == TRUE) {
+								regTAC_scale_cosp = bm->RegionalData[co_sp][nreg][reg_tac_id];
+								regC_scale_cosp = bm->RegionalData[co_sp][nreg][reg_catch_id];
+								do_sp1 = 1;
+							}
+							do_sp2 = 0;
+							if (co_sp2 != -1 && FunctGroupArray[co_sp2].isFished == TRUE) {
+								regTAC_scale_cosp2 = bm->RegionalData[co_sp2][nreg][reg_tac_id];
+								regC_scale_cosp2 = bm->RegionalData[co_sp2][nreg][reg_catch_id];
+								do_sp2 = 1;
+							}
+
+							regC_scale_cosp2 = bm->RegionalData[sp][nreg][reg_catch_id];
+							TAC_cosp1 = 0;
+							TAC_cosp2 = 2;
 							for (nf = 0; nf < bm->K_num_fisheries; nf++) {
-								flagTACparticipate = (int)(bm->FISHERYprms[nf][flagTACpartipcate_id]);
+								flagTACparticipate = (int) (bm->FISHERYprms[nf][flagTACpartipcate_id]);
 								if (flagTACparticipate) {
 									/* Convert from tonnes wet weight to mg N */
-									TAC_cosp += (regTAC_scale_cosp * bm->TACamt[co_sp2][nf][now_id] * kg_2_mg) / bm->X_CN;
-                                    CumCatch_cosp += (Harvest_Get_TotCumCatch(co_sp2, nf, bm->thisyear)  + bm->TotOldCumCatch[co_sp2][nf]) * regC_scale_cosp;
+									if (do_sp1) {
+										TAC_cosp1 += (regTAC_scale_cosp * bm->TACamt[co_sp][nf][now_id] * kg_2_mg) / bm->X_CN;
+										CumCatch_cosp1 += (Harvest_Get_TotCumCatch(co_sp, nf, bm->thisyear) + bm->TotOldCumCatch[co_sp][nf]) * regC_scale_cosp;
+									}
+									if (do_sp2) {
+										TAC_cosp2 += (regTAC_scale_cosp2 * bm->TACamt[co_sp2][nf][now_id] * kg_2_mg) / bm->X_CN;
+										CumCatch_cosp2 += (Harvest_Get_TotCumCatch(co_sp2, nf, bm->thisyear)  + bm->TotOldCumCatch[co_sp2][nf]) * regC_scale_cosp2;
+									}
 								}
 							}
 							/* Check if scaled up CumCatch for companions would exceed TAC */
 							prop_yr_changed = (1.0 - implement_BiM / 6.0);
-							CumCatch_cosp *= 1.0 + ((1 / (catch_ratio + small_num)) * prop_yr_changed);
-							catch_ratio_cosp = CumCatch_cosp / (TAC_cosp + small_num);
 
-                            if (catch_ratio_cosp > 1.0) {
-                                companion_ok = 0;
-                            }
+							CumCatch_cosp1 *= 1.0 + ((1 / (catch_ratio + small_num)) * prop_yr_changed);
+							CumCatch_cosp2 *= 1.0 + ((1 / (catch_ratio + small_num)) * prop_yr_changed);
+							catch_ratio_cosp = CumCatch_cosp1 / (TAC_cosp1 + small_num);
+							catch_ratio_cosp2 = CumCatch_cosp2 / (TAC_cosp2 + small_num);
 
+							if ((catch_ratio_cosp > 1.0) || (catch_ratio_cosp2 > 1.0))
+								companion_ok = 0;
+						}
 
-                            /* Do rescaling */
-                            if (companion_ok) {
-                                min_delay = MAXINT;
-                                for (nf = 0; nf < bm->K_num_fisheries; nf++) {
-                                    /* Political process delay vs bimonthly council metting steps _ to see when action implemented */
-                                    FCperiod = bm->FISHERYprms[nf][FC_period_id];
-                                    delay = (int) (ceil(FCperiod / 60.0));
-                                    if (delay < min_delay)
-                                        min_delay = delay;
-                                    implement_BiM = bm->BiM + delay;
-                                    if (implement_BiM > 5) {
-                                        /* Would happen after end of year so no actual effect as would be superceded by next years' managememt */
-                                        continue;
-                                    }
-                                    if (!overfished_sp) {
-                                        /* Only rescale if not overfished. If overfished consider yourself lucky and take the opportunity for extra rebuilding.
-                                         */
-                                        for (bim = implement_BiM; bim < 6; bim++) {
-                                            bm->BiTAC_sp[bim][nreg][sp][now_id] = regTAC_scale * bm->BiTACamt[bim][sp][nf][now_id] * (1 / (catch_ratio + small_num));
-                                            other_biTAC_reg = (1.0 - regTAC_scale) * bm->BiTACamt[bim][sp][nf][now_id];
-                                            bm->BiTACamt[bim][sp][nf][now_id] = bm->BiTAC_sp[bim][nreg][sp][now_id] + other_biTAC_reg;
+						/* Do rescaling */
+						if (companion_ok) {
+							min_delay = MAXINT;
+							for (nf = 0; nf < bm->K_num_fisheries; nf++) {
+								/* Political process delay vs bimonthly council metting steps _ to see when action implemented */
+								FCperiod = bm->FISHERYprms[nf][FC_period_id];
+								delay = (int) (ceil(FCperiod / 60.0));
+								if (delay < min_delay)
+									min_delay = delay;
+								implement_BiM = bm->BiM + delay;
+								if (implement_BiM > 5) {
+									/* Would happen after end of year so no actual effect as would be superceded by next years' managememt */
+									continue;
+								}
+								if (!overfished_sp) {
+									/* Only rescale if not overfished. If overfished consider yourself lucky and take the opportunity
+									 for extra rebuilding.
+									 */
+									for (bim = implement_BiM; bim < 6; bim++) {
+										bm->BiTAC_sp[bim][nreg][sp][now_id] = regTAC_scale * bm->BiTACamt[bim][sp][nf][now_id]
+												* (1 / (catch_ratio + small_num));
+										other_biTAC_reg = (1.0 - regTAC_scale) * bm->BiTACamt[bim][sp][nf][now_id];
+										bm->BiTACamt[bim][sp][nf][now_id] = bm->BiTAC_sp[bim][nreg][sp][now_id] + other_biTAC_reg;
 
-                                            printf("Time2: %e, %s by %s, bim: %d, BiTACamt: %e\n", bm->dayt, FunctGroupArray[sp].groupCode,
+										printf("Time2: %e, %s by %s, bim: %d, BiTACamt: %e\n", bm->dayt, FunctGroupArray[sp].groupCode,
 												FisheryArray[nf].fisheryCode, bim, bm->BiTACamt[bim][sp][nf][now_id]);
-                                        }
 									}
 								}
 							}

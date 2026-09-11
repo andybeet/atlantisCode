@@ -441,7 +441,6 @@ typedef enum {
 //#define small_num (double) 1e-08
 #define small_num (double) 0.0000000000000001
 #define buffer_rounding 0.000001
-#define buffer_ratio 0.0000000000001
 #define mg_2_tonne 0.00000002    /* mg C converted to wet weight in tonnes == 20 / 1000000000 */
 #define mg_2_kg 0.00002 		 /* mg C converted to wet weight in kg == 20 / 1000000 */
 #define mg_2_g 0.02 			 /* mg C converted to wet weight in kg == 20 / 1000 */
@@ -952,12 +951,14 @@ typedef enum {
     catch_allowed,                      /* Catch currently allowed to take (quota - cumulative catch) */
     flagquota_id,
     marketwgt_id,                       /* Market weighting for amount of fish feed to each market */
+    co_sp_catch_id,                     /* ID of companion in companion TAC */
     flagF_id,                           /* flag indicating whether fishing mortalities being used instead of effort model */
     mFC_id,
     mFC_num_changes_id,
     flagFchange_id,
     desired_chrt_id,
     origprice_id,
+    co_sp_catch2_id,                    /* ID of companion in companion TAC */
     incidmort_id,
     TAC_num_changes_id,
     mFC_start_age_id,
@@ -1319,7 +1320,6 @@ typedef enum {
 #define use_gear 5
 
 /* Multispecies assessment types */
-#define NoAssess -1
 #define SingleSpOnly 0
 #define PGMSY 1
 #define IndicatorSpPGMSY 2  // PGMSY must be the first two due to way sets PGMSY_on in atassessParamIO.c
@@ -1678,7 +1678,6 @@ typedef enum {
     estCV_id, /* FLag indicating broken stick perfect knowledge bias typew */
     estBias_id, /* FLag indicating broken stick perfect knowledge error level typew */
 	coType_id,
-    max_co_sp_id, // Maximum number of companion species
     done_Co_sp_id,
 	isbiogenhab_id,
 	Age50pcntV_id,
@@ -2393,10 +2392,7 @@ typedef enum {
     Tier4_Bo_correct_id, // correct scalar based on whether at Bo in reference cpue period or not
 	Tier4_m_id,         // average CPUE over last m years
 	Tier4_alpha_id,     // alpha value for use in Tier 4 calculations
-    Tier4_r_id,         // population growth rate from dynamic tier 4
-    Tier4_Carry_id,     // from dynamic tier 4
-    Tier4_z_id,         // population total mortality rate from dynamic tier 4
-    Tier5_length_id,    // ref. length of full selection  for avlen method
+	Tier5_length_id,    // ref. length of full selection  for avlen method
 	Tier5_S50_id,       // length of knife-edge sel (50% sel) for avlen method
 	Tier5_cv_id,        // cv of length-at-age used in Avlen assessment
 	//Tier5_type_id,      // 1= Surplus production, 2= av length - replaced by tiertype
@@ -2519,13 +2515,6 @@ typedef enum {
     lastRBC_id,        // Last RBC before closure in tier6
     trigq_id,          // catchability marking a species as being targeted so close under tier6
     
-    // For PGMSY
-    F_5yrAvg_id,
-    Catch_5yrAvg_id,
-    AveF_id,
-    PGMSYBHalpha_id,
-    PGMSYBHbeta_id,
-    
     // From ratpack
     LFSSlim_id,
     AFSSlim_id,
@@ -2602,8 +2591,6 @@ typedef struct {
 
 	// Exploitation-related quantities
 	//double ***Calc_catch;   /* Model-derived retained catch using age exploitation rates */
-    double **Fhist;        /* Historical fishing pressure */
-    double **Fupdate;        /* Updated fishing pressure in PGMSY */
     double **EnviroData;   /* Environmental data */
 	double ***EffortData;  /* Effort data for use in calculating CPUEs */
 	double ***CatchData;   /* Catches data feed to/from SS3 - retained catches by fleet, region, and
@@ -2861,18 +2848,7 @@ typedef struct {
     double *R02;
     double *SSHsteep;
     double **RBC_post_PGMSY_by_year;
-    double *RBC_by_year;
-    double *FFs;
-    double *PGMSY_q;
-    double *PGMSY_selcurve;
-    double *PGMSY_sel_lsm;
-    double *PGMSY_sel_sigma;
-    double *CscalarMetier;
-    
-    double **AvgCatFleet;
-    double **Fupdated;
-    double **RBCupdated;
-    double **CatchStore;
+    double **RBC_by_year;
 
     double***** FracLenS;   // fraction of fish in length bins by stock, sex, age and time (start-year)
     //double***** FracLenM;   // fraction of fish in length bins by stock, sex, age and time (mid-year)
@@ -2902,7 +2878,6 @@ typedef struct {
     METarrays *metierArray;
     
     // SS relevant parameters
-    int UseAtlantisPGMSY; /* Flag to indicate whether to use Atlantis version of PGMSY */
     int UseSS;	         /* Flag indicating whether using SS for Tier 1 (1) or if using perfect info + error (0) */
     int UseTierBuffers;  /* Flag indicating whether using tier buffers (used to say US tiers) */
     double myTACbuffer;  /* Buffer used for myTAC multi-year TACs in subsequent years */
@@ -2936,11 +2911,6 @@ typedef struct {
     double GradientBuffer; /* Buffer around scores used in judging whether closest or not for the purposes of pairing up species */
     int UseCategory; /* Whether indicator species approach using a category to track against (1) or only a single species (0) */
     int UseClosest; /* Whether using closest regardless of category (1) or only the same category as you (0) */
-    int UseTriggerMgmt; /* Whether using trigger based management - so basically rolling TAC until trigger conditions met */
-    int ProjYr; /* Length of the projeciton period of assessments */
-    double  ThresholdDepletion; /* Threshold for depletion levels for PGMSY */
-    double ThresholdBound; /* Bound on convergence of depletion levels for PGMSY */
-    int MaxIteration; /* Maximum iterations allowed in PGMSY */
     
 	int initHistFileDone;  /*Flag indicating whether the history file has been initialised or not */
 	//int Tier3_Fcalc;  /* Type of tier3 F calculation to use: 1 = catch-curve, 2 = ASPM, 3 = true F */
@@ -3017,10 +2987,6 @@ typedef struct {
     
     double *catchwghtCPUE;
     double *catchwght;
-    
-    double **F_actFleet;
-    double **FratioFleet;
-    double **Fhist;
 
 } RBCstructure;
 
@@ -4191,7 +4157,6 @@ typedef struct {
 
 
 	int flag_replicated_old; /* Flag to allow modellers to replicate the results of the old bec_dev version of the code. We will remove this asap. */
-    int flag_replicated_old_PPmort; /* So can replicate old primary production mortality assumption */
     int flag_old_embryo_init; /* Flag to use the old means of having embryoes carried over from spawning pre-model start */
     int flag_replicate_old_calendar; /* Flag to allow modellers to replicate the results of the old way of doing the aging and spawning calendar dates */
     int flag_sanity_check; /* Flag to trigger sanity checks in the demographics code */
@@ -4631,8 +4596,8 @@ typedef struct {
 	 across entire domain */
 	int flagagestruct; /**< Flag indicating whether to track age-class distribution
 	 within age phase */
-	int flagtempdepend_move; /**< Flag indicating whether movement activities is temperature dependent */
-    int flagtempdepend_reprod; /**< Flag indicating whether spawning and reproduction is temperature dependent */
+	int flagtempdepend; /**< Flag indicating whether ecological activities
+	 (e.g. movement and spawning) temperature dependent */
 	int flagsaltdepend; /**< Flag indicating whether ecological activities
 	 (e.g. movement and spawning) salinity dependent */
 	int flagO2depend; /**< Flag indicating whether ecological activities
@@ -4716,9 +4681,6 @@ typedef struct {
 
 	/** Additional tracer information */
 	int track_atomic_ratio;
-    int flagratio_warn;
-    double N_to_C;
-    double N_to_P;
 	AtomicRatioStructure *atomicRatioInfo;
 
 	int track_contaminants;	/* Are we tracking contaminants in the model */
@@ -4781,7 +4743,6 @@ typedef struct {
     double ****turbid_effect; /* Refuge from predation provided by turbidity conditions - only in effect if flagIsEstuary is active (on) */
 
     double *tot_SSB; /* Spawning stock biomass */
-    double **tot_cohort; /* Total cohort numbers */
 
 	double **coveramt; /* Proportional cover by each substrate type per box */
 	int REEFcover_id;
@@ -4886,7 +4847,6 @@ typedef struct {
 	double Speed_recboat; /* Speed of recreational fishing boats */
 
     int K_max_co_sp;
-    int K_max_impacted_sp; /* id of the last impacted species listed in the groups.csv file */
 	int K_num_fisheries; /* Maximum number of fisheries in the model */
 	int K_max_num_subfleet;
 	int K_max_num_zoning; /* Maximum number of fisheries zonings in the model */
@@ -5056,8 +5016,6 @@ typedef struct {
 	double ***RecCatch; /**< Recreational catch statistics */
 	double **targetspbiom; /**< Biomass map to condition fisheries effort allocation
 	 and targeting of trips */
-    
-    double ***selectivity;    /** Constant selectivity per cohort or stage for each group (for the invertebrates it is identical to the entries above for constant selectivity regardless of size.*/
 
 	double ***TACamt; /* Array of total allowable catch levels */
 	double ****BiTACamt; /* Array of bimonthly total allowable catch levels */
@@ -5729,6 +5687,14 @@ void Amoeba(MSEBoxModel *bm, int assessing, int sp, double dayt, char* speciesna
 		double prm_sp, int *nfunk, int *ilow, FILE *ofp, double *xpar);
 void powell(MSEBoxModel *bm, int sp, double *xf, double **xunit, int npar, double ftol, int *iter, double *ss, int funkflag);
 
+/* Redus management related prototypes */
+void Redus_Linkage_Start(MSEBoxModel *bm);
+int freeRedus();
+
+/* RAssess related */
+void RRAssess_Linkage_Start(MSEBoxModel *bm);
+void Do_RAssess(MSEBoxModel *bm, int species, int year, FILE *llogfp);
+int freeRRAssess();
 
 /* Economics related prototypes */
 void Quicksort_Dir(double *x, double *bbx, double *ccx, double *ddx, double *eex, int n, int ascendflag);
@@ -5749,14 +5715,6 @@ FILE * initDynTier4File(MSEBoxModel *bm);
 FILE * initDynTier4CTLFile(MSEBoxModel *bm);
 
 #ifdef RASSESS_LINK_ENABLED
-/* RAssess related */
-void RRAssess_Linkage_Start(MSEBoxModel *bm);
-void Do_RAssess(MSEBoxModel *bm, int species, int year, FILE *llogfp);
-int freeRRAssess();
-
-/* Redus management related prototypes */
-void Redus_Linkage_Start(MSEBoxModel *bm);
-int freeRedus();
 void REDUS_management(MSEBoxModel *bm, FILE *llogfp);
 void RAssessSurvey(MSEBoxModel *bm, FILE *llogfp);
 #endif
