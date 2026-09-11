@@ -48,7 +48,7 @@ int Util_Read_Fisheries_XML(MSEBoxModel *bm, char *fileName, FILE *llogfp) {
 		fprintf(
 					stderr,
 					"\n\nERROR. Util_Read_Fisheries_XML: Trying to read in the fishery definition file, but no file was provided.\n\n See the -q option below.\n\n");
-			Util_Usage();
+			Util_Usage(1);
 			exit(-1);
 	}
 
@@ -76,7 +76,7 @@ int Util_Read_Fisheries_XML(MSEBoxModel *bm, char *fileName, FILE *llogfp) {
 		fprintf(
 				stderr,
 				"\n\nERROR. Util_Read_Fisheries_XML: Trying to read in the fishery information from a csv file. This should now be read in from an XML input file\n\n");
-		Util_Usage();
+		Util_Usage(1);
 		exit(-1);
 	}
 	*/
