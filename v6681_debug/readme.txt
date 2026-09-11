@@ -1,7 +1,7 @@
 The "debug" refers to a small change in the code to prevent checking that values are proportions
 Escapement values were altered to allow for fleet parameterization.
 
-Change: atlantis/atlantisUtil/atlantisUtilsXML.c
+Change: atlantis/atlantisUtil/atUtilFisheryXML.c
 
 Around line 163 the following should read:
 
