@@ -1,0 +1,9 @@
+# Handle text files automatically and force LF line endings on checkout
+* text=auto eol=lf
+
+# Explicitly ensure bash scripts and other config files stay LF
+*.sh text eol=lf
+
+# Keep binary files untouched
+*.png binary
+*.jpg binary
