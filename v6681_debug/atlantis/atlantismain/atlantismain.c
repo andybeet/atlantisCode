@@ -412,7 +412,6 @@ int runNextTimeStep(MSEBoxModel *bm){
 		}
 
 		Manage_Calculate_Total_Effort(bm, logfp);
-
 		/* To increase speed in debugging use this to provide fisheries with catches
 		 while skipping biology.
 		 */
@@ -1444,12 +1443,14 @@ void setupMSEBoxModel(int argc, char *argv[], MSEBoxModel *bm) {
 		fid = createBMDataFile(bm->destFolder, bm->ncOfname, bm, 0);
 		bm->ncOfdump = 0;
 	} else if (bm->flagreusefile == 2) {
+
 		/* Create file anew */
 		ncopts = NC_CLOBBER;
 		ncclose(fid);
 		fid = createBMDataFile(bm->destFolder, bm->ncOfname, bm, 0);
 		bm->ncOfdump = 0;
 	} else if (bm->flagreusefile == 1) {
+
 		/* File does exist - check dimension lengths */
 		ncopts = NC_VERBOSE;
 		ncdiminq(fid, ncdimid(fid, "b"), NULL, &n);
@@ -1479,7 +1480,7 @@ void setupMSEBoxModel(int argc, char *argv[], MSEBoxModel *bm) {
 		quit("file with name %s already exists, either delete, rename or set reuse param in run.prm to 1\n", bm->ncOfname);
 	}
 	bm->ncOfid = fid;
-    
+
     /* Open the fisheries output files */
 	if (bm->fishout) {
 		printf("Create fisheries output file\n");
@@ -1601,16 +1602,19 @@ void setupMSEBoxModel(int argc, char *argv[], MSEBoxModel *bm) {
 	printf("Create growth and consumption output file\n");
 	ncopts = 0;
 	if (fid4 == -1) {
+
 		/* Create file */
 		fid4 = createBMDataFile(bm->destFolder, bm->ncOPCfname, bm, 2);
 		bm->ncOpcdump = 0;
 
 	} else if (bm->flagreusefile == 2) {
+
 		/* Create file anew */
 		ncopts = NC_CLOBBER;
 		ncclose(fid4);
 		fid4 = createBMDataFile(bm->destFolder, bm->ncOPCfname, bm, 2);
 		bm->ncOpcdump = 0;
+
 	} else if (bm->flagreusefile == 1) {
 		/* File does exist - check dimension lengths */
 		ncopts = NC_VERBOSE;
@@ -1657,11 +1661,13 @@ void setupMSEBoxModel(int argc, char *argv[], MSEBoxModel *bm) {
             bm->ncOaadump = 0;
 
         } else if (bm->flagreusefile == 2) {
+
             /* Create file anew */
             ncopts = NC_CLOBBER;
             ncclose(fid6);
             fid6 = createBMAnnAgeBioDataFile(bm->destFolder, bm->ncOAAfname, bm);
             bm->ncOaadump = 0;
+
         } else if (bm->flagreusefile == 1) {
             /* File does exist - check dimension lengths */
             ncopts = NC_VERBOSE;

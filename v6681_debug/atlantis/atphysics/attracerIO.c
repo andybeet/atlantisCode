@@ -63,10 +63,11 @@ int createBMDataFile(char *destFolder, char *name, MSEBoxModel *bm, int dtype) {
 	ncopts = NC_VERBOSE | NC_FATAL;
 
 	/* Create new netCDF file */
-	if (bm->flagreusefile == 2)
+	if (bm->flagreusefile == 2) {
 		fid = nccreate(fileName, NC_CLOBBER);
-	else
+	} else {
 		fid = nccreate(fileName, NC_NOCLOBBER);
+	}
 
 	/* Define dimensions */
 	ncdimdef(fid, "t", NC_UNLIMITED);

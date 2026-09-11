@@ -106,13 +106,12 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
     
 	if (verbose > 1)
 		printf("Determine total effort\n");
-
     /* Store any CPUE information - do this before shift Effort values around */
     if(bm->flagStoreShotCPUE)
         GenerateCPUE(bm, llogfp);
     if(bm->flagStoreCPUE)
         Write_CPUE(bm, llogfp);
-    
+
     /* Initialise local arrays */
 	for (nf = 0; nf < bm->K_num_fisheries; nf++) {
 		Harvest_Set_Harvest_Index(bm, nf, checkdone_id, 0);
@@ -190,7 +189,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 			}
 		}
 	}
-    
+ 
     /* Find average CPUE for each box over the last fisheries recording period
 	 (becasue catch is cumulative you can't just divide the total catch recorded
 	 for the square by the effort from yesterday. As a first pass, reduce catch from
@@ -213,7 +212,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
     if (bm->flagForceRec) {
 		Update_Port_Population(bm, llogfp);
     }
-     
+
     for (ij = 0; ij < bm->nbox; ij++) {
 		if (bm->boxes[ij].type != BOUNDARY) {
 			for (nf = 0; nf < bm->K_num_fisheries; nf++) {
@@ -275,7 +274,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 			}
 		}
 	}
-    
+   
     for (k = 0; k < bm->K_num_fisheries; k++) {
 		if (bm->totOldEffort[k] < small_num)
 			bm->totOldEffort[k] = 0.0;
@@ -289,7 +288,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 		}
         */
 	}
-    
+
     /**** Calculate new distribution of effort *******************************************/
 	for (fishery_id = 0; fishery_id < bm->K_num_fisheries; fishery_id++) {
 
@@ -314,7 +313,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 			}
 			continue;
 		}
-
+ 
 		/* Only continue if fishery active this time step */
 		if (!bm->FISHERYprms[fishery_id][fisheriesactive_id]) {
 			for (ij = 0; ij < bm->nbox; ij++) {
@@ -322,7 +321,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 			}
 			continue;
 		}
-        
+ 
         /* If active determine what proportion of the entire day it is active
 		 and then compare that against dt, so can scale realised effort accordingly
 		 */
@@ -332,7 +331,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
             active_scale = 1.0;
         
         if (flagspeffortmodel != readts_effort) {
-
+ 
             /* Effort management */
 			flagmanage = (int) (bm->FISHERYprms[fishery_id][flagmanage_id]);
 			EFF_scale0 = Effort_Restrict_Check(bm, fishery_id, flagmanage, &trigger_tripped, llogfp);
@@ -359,18 +358,18 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 				Check_For_Active_MPA(bm, fishery_id);
              */
 		}
-
+ 
         /* Check port status and contribution */
         if (bm->FISHERYprms[fishery_id][fisheries_need_port_id]) {
 			Calculate_Port_Contrib(bm, fishery_id, flagspeffortmodel, llogfp);
         }
-
+ 
         /* Allocate effort */
 		for (ij = 0; ij < bm->nbox; ij++) {
+			printf("box num = %d\n",ij);
 			if (bm->boxes[ij].type != BOUNDARY) {
 
 				if (flagspeffortmodel != readts_effort) {
-
 					FCpressure = Allocate_Immediate_Effort(bm, fishery_id, ij, flagspeffortmodel, prop_pop_fish, llogfp);
 
 					/* Seasonal closures */
@@ -464,7 +463,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 			}
 		}
 	}
-    
+ 
     /* If overall effort declines not allowed for that fishery at that time rescale effort */
 	for (fishery_id = 0; fishery_id < bm->K_num_fisheries; fishery_id++) {
         
@@ -520,14 +519,14 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 			}
 		}
 	}
-    
+ 
     /* Calculate final effort and any gear conflict */
 	crunch_id = bm->conflict_id;
     for (ij = 0; ij < bm->nbox; ij++) {
 		bm->boxes[ij].fishstat[crunch_id] = 0;
     }
 	totconflict = 0;
-    
+
     /* Find a gear conflict indicator - how many fisheries and having conflicts with gear *
 	 * This has no impact on the dynamics at all its just an output indicator. */
 	for (fishery_id = 0; fishery_id < bm->K_num_fisheries; fishery_id++) {
@@ -578,7 +577,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 			}
 		}
 	}
-    
+ 
     /* Check fishing effort cap */
 	Check_CAP(bm, llogfp);
     
@@ -590,7 +589,7 @@ void Manage_Calculate_Total_Effort(MSEBoxModel *bm, FILE *llogfp) {
 		bm->totOldEffort[sp] = 0.0;
 		bm->totNewEffort[sp] = 0.0;
 	}
-    
+ 
 	return;
 }
 
