@@ -239,10 +239,18 @@ static void Adapt_Diff_Method(MSEBoxModel *bm, int flagModel, double tsz, BoxLay
  */
 void Ecology_Box_Biology(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp) {
 	double midpoint = pBox->inside.y;
+    int this_top_layer = bm->top_layer;
     
-    if (verbose > 0)
-		printf("processing box %d\n", pBox->n);
+    if (verbose > 0){
+        printf("processing box %d\n", pBox->n);
+        fflush(stdout);
+        fflush(stderr);
+    }
 
+    if(!bm->dtsz_stored) {
+        bm->dtsz_stored = dt;
+    }
+    
     /* Set current box */
 	bm->current_box = pBox->n;
     
@@ -258,13 +266,19 @@ void Ecology_Box_Biology(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp) {
 		Box_Ice_Light_Level(bm, pBox, llogfp);				// Light inside the ice
 	}
 	Box_Light_Process(bm, pBox, llogfp);
-
+    
 	/* Calculate oxygen depth */
 	Box_O2_Depth_Process(bm, pBox);
 
 	/* Get local rugosity */
     Box_Rugosity(bm, pBox, 0, llogfp);
     
+    /* Get Local Wind */
+    if( bm->track_wind) {
+        this_top_layer = pBox->nz - 1;
+        current_WIND =  pBox->tr[this_top_layer][Wind_i];
+    }
+ 
 	/* Ice related biologically relevant physical ice properties */
 	if(bm->ice_on) {
 		Box_Ice_Flux(bm, pBox, llogfp);  					// Flux of dissolved properties into ice
@@ -297,59 +311,54 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 	int numwclayer = pBox->nz; /* Number of cells in WC */
 	int numsmlayer = pBox->sm.nz; /* Number of cells in Sm */
 	int numicelayer = pBox->ice.currentnz; /* Number of cells in ICE */
-	BoxLayerValues *boxLayerInfo = (BoxLayerValues *) malloc(sizeof(BoxLayerValues));
-	/* Set-up debugging arrays */
-	int totout = bm->K_num_tot_sp + 2; // Extra entries for remineralisation and final flux
-	//int totfluxout = bm->K_num_tot_sp + num_nut_flux_id; // Extra entries for nutrient fluxes
-	int totfluxout = bm->K_num_tot_sp + bm->K_num_physiochem;
+    int totout = bm->K_num_tot_sp + 2; // Extra entries for remineralisation and final flux
+    //int totfluxout = bm->K_num_tot_sp + num_nut_flux_id; // Extra entries for nutrient fluxes
+    int totfluxout = bm->K_num_tot_sp + bm->K_num_physiochem;
 
     if (verbose > 1)
 		printf("Doing Box_Bio_Process\n");
     
-    /** Allocate memory to store all of the box layer information */
+    /** Allocate or initialise memory to store all of the box layer information */
 	//printf("Creating boxLayer arrays\n");
+    Util_Init_2D_Long_Double(boxLayerInfo->NutsProd, bm->num_active_habitats, K_num_nutrients, 0.0);
+    Util_Init_3D_Long_Double(boxLayerInfo->NutsProdGlobal, bm->num_active_habitats, bm->num_active_habitats, K_num_nutrients, 0.0);
+    Util_Init_2D_Long_Double(boxLayerInfo->NutsLost, bm->num_active_habitats, K_num_nutrients, 0.0);
+    Util_Init_3D_Long_Double(boxLayerInfo->NutsLostGlobal, bm->num_active_habitats, bm->num_active_habitats, K_num_nutrients, 0.0);
+    Util_Init_2D_Long_Double(boxLayerInfo->DetritusProd, bm->num_active_habitats, K_num_nutrients, 0.0);
+    Util_Init_3D_Long_Double(boxLayerInfo->DetritusProdGlobal, bm->num_active_habitats, bm->num_active_habitats, K_num_nutrients, 0.0);
+    Util_Init_2D_Long_Double(boxLayerInfo->DetritusLost, bm->num_active_habitats, K_num_nutrients, 0.0);
+    Util_Init_3D_Long_Double(boxLayerInfo->DetritusLostGlobal, bm->num_active_habitats, bm->num_active_habitats, K_num_nutrients, 0.0);
 
-	boxLayerInfo->NutsProd = Util_Alloc_Init_2D_Long_Double(K_num_nutrients, bm->num_active_habitats, 0.0);
-	boxLayerInfo->NutsProdGlobal = Util_Alloc_Init_3D_Long_Double(K_num_nutrients, bm->num_active_habitats, bm->num_active_habitats, 0.0);
-	boxLayerInfo->NutsLost = Util_Alloc_Init_2D_Long_Double(K_num_nutrients, bm->num_active_habitats, 0.0);
-	boxLayerInfo->NutsLostGlobal = Util_Alloc_Init_3D_Long_Double(K_num_nutrients, bm->num_active_habitats, bm->num_active_habitats, 0.0);
-	boxLayerInfo->DetritusProd = Util_Alloc_Init_2D_Long_Double(K_num_nutrients, bm->num_active_habitats, 0.0);
-	boxLayerInfo->DetritusProdGlobal = Util_Alloc_Init_3D_Long_Double(K_num_nutrients, bm->num_active_habitats, bm->num_active_habitats, 0.0);
-	boxLayerInfo->DetritusLost = Util_Alloc_Init_2D_Long_Double(K_num_nutrients, bm->num_active_habitats, 0.0);
-	boxLayerInfo->DetritusLostGlobal = Util_Alloc_Init_3D_Long_Double(K_num_nutrients, bm->num_active_habitats, bm->num_active_habitats, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localWCTracers, (2 * numwcvar + numepivar), 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localWCFlux, (2 * numwcvar + numepivar), 0.0);
 
-	/** Allocate storage for the local copies of the tracers and flux values */
-	boxLayerInfo->localWCTracers = Util_Alloc_Init_1D_Double(2 * numwcvar + numepivar, 0.0);
-	boxLayerInfo->localWCFlux = Util_Alloc_Init_1D_Double(2 * numwcvar + numepivar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localSEDTracers, numwcvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localSEDFlux, numwcvar, 0.0);
 
-	boxLayerInfo->localSEDTracers = Util_Alloc_Init_1D_Double(numwcvar, 0.0);
-	boxLayerInfo->localSEDFlux = Util_Alloc_Init_1D_Double(numwcvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localEPITracers, numwcvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localEPIFlux, numwcvar, 0.0);
 
-	boxLayerInfo->localEPITracers = Util_Alloc_Init_1D_Double(numwcvar, 0.0);
-	boxLayerInfo->localEPIFlux = Util_Alloc_Init_1D_Double(numwcvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localICETracers, numwcvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localICEFlux, numwcvar, 0.0);
 
-	/* Number of ice tracers is the same as the number of wc tracers as the tracers are added onto the end of tinfo.*/
-	boxLayerInfo->localICETracers = Util_Alloc_Init_1D_Double(numwcvar, 0.0);
-	boxLayerInfo->localICEFlux = Util_Alloc_Init_1D_Double(numwcvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localLANDTracers, numwcvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localLANDFlux, numwcvar, 0.0);
 
-	boxLayerInfo->localLANDTracers = Util_Alloc_Init_1D_Double(numwcvar, 0.0);
-	boxLayerInfo->localLANDFlux = Util_Alloc_Init_1D_Double(numwcvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localDiagTracers, numdiagvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localDiagFlux, numdiagvar, 0.0);
 
-	boxLayerInfo->localDiagTracers = Util_Alloc_Init_1D_Double(numdiagvar, 0.0);
-	boxLayerInfo->localDiagFlux = Util_Alloc_Init_1D_Double(numdiagvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localFishTracers, numfstatvar, 0.0);
+    Util_Init_1D_Double(boxLayerInfo->localFishFlux, numfstatvar, 0.0);
+    
+    Util_Init_3D_Double(boxLayerInfo->DebugInfo, totout, bm->num_active_habitats, Diagnostnlevel_id, 0.0);
+    Util_Init_3D_Double(boxLayerInfo->DebugFluxInfo, totfluxout, bm->num_active_habitats, 2, 0.0);
 
-	boxLayerInfo->localFishTracers = Util_Alloc_Init_1D_Double(numfstatvar, 0.0);
-	boxLayerInfo->localFishFlux = Util_Alloc_Init_1D_Double(numfstatvar, 0.0);
+    boxLayerInfo->BB_DL = 0.0;
+    boxLayerInfo->BB_DR = 0.0;
+    boxLayerInfo->PB_DL = 0.0;
+    boxLayerInfo->PB_DR = 0.0;
 
-	boxLayerInfo->DebugInfo = Util_Alloc_Init_3D_Double(Diagnostnlevel_id, bm->num_active_habitats, totout, 0.0);
-	boxLayerInfo->DebugFluxInfo = Util_Alloc_Init_3D_Double(2, bm->num_active_habitats, totfluxout, 0.0);
-
-	boxLayerInfo->BB_DL = 0.0;
-	boxLayerInfo->BB_DR = 0.0;
-	boxLayerInfo->PB_DL = 0.0;
-	boxLayerInfo->PB_DR = 0.0;
-
-	boxLayerInfo->DIN = 0.0;
+    boxLayerInfo->DIN = 0.0;
 
 	//	int den, cohort;
 	bm->max_depth = bm->maxwcbotz;
@@ -401,9 +410,11 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 
 	FlagModel = 1;
     
+    //Ecology_Check_VertAbund(bm, newwctr, llogfp, 0);
+    
 	for (ij = numwclayer - 1; ij > stopij; ij--) {
 		if (verbose > 1)
-			fprintf(llogfp, "processing water column layer %d\n", ij);
+        printf("processing water column layer %d\n", ij);
         
 		/* Get layer's physical characteristics */
 		bm->current_layer = ij;
@@ -438,12 +449,18 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 		else
 			Susp_Sed = pBox->stress * pBox->area / bm->cell_vol;
 
+        //Ecology_Check_VertAbund(bm, newwctr, llogfp, 1);
+        
         /* Run Adaptive Difference Method */
 		Adapt_Diff_Method(bm, FlagModel, dt, boxLayerInfo, llogfp);
-
+        
+        //Ecology_Check_VertAbund(bm, newwctr, llogfp, 2);
+        
 		/* Spawning */
 		Vertebrate_Reproduction(bm, ij, maxdeep, totaldeep, numwclayer, boxLayerInfo->localWCTracers, llogfp);
 		Invertebrate_Reproduction(bm, ij, maxdeep, totaldeep, boxLayerInfo->localWCTracers, llogfp);
+        
+        //Ecology_Check_VertAbund(bm, newwctr, llogfp, 3);
 
 		/* Transfer all the temporary values back to their final locations */
 		for (k = 0; k < numwcvar; k++)
@@ -452,6 +469,8 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 			pBox->diagnost[k] = boxLayerInfo->localDiagTracers[k]; /* To diagnostics */
 		for (k = 0; k < numfstatvar; k++)
 			pBox->fishstat[k] = boxLayerInfo->localFishTracers[k]; /* To fisheries statistics */
+        
+        //Ecology_Check_VertAbund(bm, newwctr, llogfp, 4);
 	}
     
     /** Now process sediment layers not in contact with water. **/
@@ -487,9 +506,13 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 				Bact_stim = 1.0; // Originally introduced while model being balanced
 
 			current_layer_sed = ij;
+            
+            //Ecology_Check_VertAbund(bm, newwctr, llogfp, 5);
 
 			/* Run Adaptive Difference Method */
 			Adapt_Diff_Method(bm, FlagModel, dt, boxLayerInfo, llogfp);
+            
+            //Ecology_Check_VertAbund(bm, newwctr, llogfp, 6);
 
 			/* Transfer all of the values back to the final locations */
 			for (k = 0; k < numwcvar; k++)
@@ -498,6 +521,8 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 				pBox->diagnost[k] = boxLayerInfo->localDiagTracers[k]; /* To diagnostics */
 			for (k = 0; k < numfstatvar; k++)
 				pBox->fishstat[k] = boxLayerInfo->localFishTracers[k]; /* To fisheries statistics */
+            
+            //Ecology_Check_VertAbund(bm, newwctr, llogfp, 7);
 		}
         
         /** Now process epibenthic layer and adjacent water and sediment layers. **/
@@ -578,12 +603,18 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 			smLayerThick += small_num;
 		}
 
+        //Ecology_Check_VertAbund(bm, newwctr, llogfp, 8);
+        
 		/* Run Adaptive Difference Method */
 		Adapt_Diff_Method(bm, FlagModel, dt, boxLayerInfo, llogfp);
+        
+        //Ecology_Check_VertAbund(bm, newwctr, llogfp, 9);
 
 		/* Spawning */
 		Vertebrate_Reproduction(bm, 0, maxdeep, totaldeep, numwclayer, boxLayerInfo->localWCTracers, llogfp);
 		Invertebrate_Reproduction(bm, 0, maxdeep, totaldeep, boxLayerInfo->localWCTracers, llogfp);
+        
+        //Ecology_Check_VertAbund(bm, newwctr, llogfp, 10);
 
 		/* Transfer all values in localWCTracers and localSed to the appropriate variables and
 		 reset pointers Y1 and Y2 to newwctr and newsed tr pointing to returned value space
@@ -594,6 +625,8 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 			newsedtr[bm->current_box][0][ij] = boxLayerInfo->localSEDTracers[ij]; /* To top cell in sediment*/
 		}
 
+        //Ecology_Check_VertAbund(bm, newwctr, llogfp, 11);
+        
 		for (ij = 0; ij < numepivar; ij++) /* To epibenthic variables*/
 			pBox->epi[ij] = boxLayerInfo->localEPITracers[ij];
 		for (k = 0; k < numdiagvar; k++)
@@ -640,41 +673,8 @@ static void Box_Bio_Process(MSEBoxModel *bm, Box *pBox, double dt, FILE *llogfp)
 	/* Calculate new detrital depth */
 	bm->boxes[bm->current_box].sm.detdepth = bm->boxes[bm->current_box].sm.detdepth + Enviro_turb * BioturbEnh / DRdepth * (1.0 - exp(-K_TUR_DEP / (DRdepth
 			+ small_num)));
-
-	/* Free up the allocated memory */
-	free1d(boxLayerInfo->localWCTracers);
-	free1d(boxLayerInfo->localSEDTracers);
-	free1d(boxLayerInfo->localEPITracers);
-	free1d(boxLayerInfo->localICETracers);
-	free1d(boxLayerInfo->localLANDTracers);
-
-	free1d(boxLayerInfo->localWCFlux);
-	free1d(boxLayerInfo->localSEDFlux);
-	free1d(boxLayerInfo->localEPIFlux);
-	free1d(boxLayerInfo->localICEFlux);
-	free1d(boxLayerInfo->localLANDFlux);
-	
-	free1d(boxLayerInfo->localDiagFlux);
-	free1d(boxLayerInfo->localDiagTracers);
-	free1d(boxLayerInfo->localFishFlux);
-	free1d(boxLayerInfo->localFishTracers);
-
-	//if(verbose > 0)
-	//	printf("Free debug info\n");
-
-	free3d(boxLayerInfo->DebugInfo);
-	free3d(boxLayerInfo->DebugFluxInfo);
-
-	d_free2longd(boxLayerInfo->NutsProd);
-	d_free3longd(boxLayerInfo->NutsProdGlobal);
-	d_free2longd(boxLayerInfo->NutsLost);
-	d_free3longd(boxLayerInfo->NutsLostGlobal);
-	d_free2longd(boxLayerInfo->DetritusProd);
-	d_free3longd(boxLayerInfo->DetritusProdGlobal);
-	d_free2longd(boxLayerInfo->DetritusLost);
-	d_free3longd(boxLayerInfo->DetritusLostGlobal);
-
-	free(boxLayerInfo);
+    
+    //Ecology_Check_VertAbund(bm, newwctr, llogfp, 12);
     
     /*
     pid = FunctGroupArray[8].contamPropTracers[3][0];
@@ -1028,8 +1028,10 @@ void Copy_WC_Tracers(MSEBoxModel *bm, double *localWCTracers, double *localWCFlu
 		/* If this is a diagnostic tracer then set to 0 - this means the values written to the output files is
 		 * actually the flux in this timestep
 		 */
+        localWCTracers[i] = 0.0;
 		if (Fluxflag[i] == 1 || strlen(Varname[i]) == 0){
-			localWCTracers[i] = 0.0;
+			// Do nothing here now
+            //localWCTracers[i] = 0.0; Moved outside the if so it's initialised
 		} else {
 			localWCTracers[i] = bm->boxes[bm->current_box].tr[bm->current_layer][i];
 		}
@@ -1175,9 +1177,11 @@ static void Copy_FishStat_Tracers(MSEBoxModel *bm, double *localTracers, double 
  */
 static void Check_Tracer_Values(MSEBoxModel *bm, double *localTracer, FILE *llogfp) {
 	int i;
-	for (i = 0; i < bm->ntracer; i++)
-		if (!(_finite(localTracer[i])))
-			fprintf(llogfp, "day %e, box %d-%d %s (%d) starts:%.10f \n", bm->dayt, bm->current_box, bm->current_layer, Varname[i], i, localTracer[i]);
+    for (i = 0; i < bm->ntracer; i++) {
+        if (!(_finite(localTracer[i]))) {
+            fprintf(llogfp, "day %e, box %d-%d %s (%d) starts:%.10f \n", bm->dayt, bm->current_box, bm->current_layer, Varname[i], i, localTracer[i]);
+        }
+    }
 }
 /**
  *	\brief Diagnostic integration. Use one-step method to integrate all diagnostic variables

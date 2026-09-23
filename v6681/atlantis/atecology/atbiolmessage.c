@@ -1371,7 +1371,7 @@ static void Write_VirginBiomass(FILE *fid, MSEBoxModel *bm) {
 
 
 	if (verbose > 1)
-		fprintf(stderr, "Write total biomass information\n");
+        printf( "Write total biomass information\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);
@@ -1452,6 +1452,8 @@ static void Write_VirginBiomass(FILE *fid, MSEBoxModel *bm) {
 	}
 
 	fprintf(fid, "\n");
+    
+    fflush(fid);
 
 	return;
 }
@@ -1514,7 +1516,7 @@ static void Write_Regional_Biomass(FILE *fid, MSEBoxModel *bm) {
 	int sp, nreg;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write regional biomass information\n");
+        printf( "Write regional biomass information\n");
 
 	for (nreg = 0; nreg < bm->K_num_active_reg; nreg++) {
 
@@ -1602,7 +1604,7 @@ static void Write_YOY(FILE *fid, MSEBoxModel *bm) {
 	int sp, flag_sp, stock;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write YOY information\n");
+        printf( "Write YOY information\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);
@@ -1667,7 +1669,7 @@ static void Write_SSB(FILE *fid, MSEBoxModel *bm) {
 	int sp, flag_sp;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write SSB information\n");
+        printf( "Write SSB information\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);
@@ -1763,7 +1765,7 @@ static void Write_Mort(FILE *fid, MSEBoxModel *bm) {
 	double catch_N = 0.0, start_N = 0.0, natDead_N = 0.0, mort_scale = 0.0, Fest = 0.0, Mest = 0.0;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write mortality estimates\n");
+        printf( "Write mortality estimates\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);
@@ -2147,14 +2149,12 @@ static FILE * Init_MortPerPredEst_File(MSEBoxModel *bm) {
 static void Write_MortPerPred(FILE *fid, MSEBoxModel *bm) {
 	int sp, flag_sp, update_date, caseid, pred;
 	int totnum = bm->K_num_tot_sp;
-	double start_N = 0.0, natDead_N = 0.0, mort_scale = 0.0, Mest = 0.0, scale_denom, total = 0.0;
+    double start_N = 0.0, natDead_N = 0.0, mort_scale = 0.0, Mest = 0.0, scale_denom;
+    // double total = 0.0;
 	double totalPredMort = 0;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write mortality estimates\n");
-
-	/* Write time */
-	fprintf(fid, "Time: %e\n", bm->dayt);
+        printf( "Write mortality estimates\n");
 
 	/* Write mortality per pred values */
 	for (sp = 0; sp < totnum; sp++) {
@@ -2220,7 +2220,7 @@ static void Write_MortPerPred(FILE *fid, MSEBoxModel *bm) {
 				flag_sp = (int) (FunctGroupArray[pred].speciesParams[flag_id]);
 				if (flag_sp) {// && FunctGroupArray[pred].isPredator == TRUE) {
 					natDead_N = bm->calcMnumPerPred[sp][pred][caseid];
-					total += natDead_N;
+					//total += natDead_N;
 					Mest = mort_scale * (natDead_N / (start_N + small_num));
 					fprintf(fid, " %e", Mest);
 					totalPredMort = totalPredMort + Mest;
@@ -2370,7 +2370,7 @@ static void Write_DietCheck(FILE *fid, MSEBoxModel *bm) {
     int totnum = bm->K_num_tot_sp;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write diet check output\n");
+        printf( "Write diet check output\n");
 
 	/* Write diet values */
     for (sp=0; sp<totnum; sp++) {
@@ -2928,7 +2928,7 @@ static void Write_MacrophyteBiomass(FILE *fid, MSEBoxModel *bm) {
 	int sp, cohort;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write total age structured biomass information\n");
+        printf( "Write total age structured biomass information\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);
@@ -2989,7 +2989,7 @@ static void Write_AgeBiomass(FILE *fid, MSEBoxModel *bm) {
 	int sp, cohort;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write total age structured biomass information\n");
+        printf( "Write total age structured biomass information\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);
@@ -3050,7 +3050,8 @@ static FILE * Init_AnnualAgeBiom_File(MSEBoxModel *bm) {
  *
  */
 static void Write_AnnualAgeBiomass(FILE *fid, MSEBoxModel *bm) {
-    int sp, cohort, this_cohort, i, k;
+    int sp, cohort, i, k;
+    //int this_cohort;;
     
     if (verbose > 1)
         fprintf(stderr, "Write total age structured biomass information\n");
@@ -3062,12 +3063,12 @@ static void Write_AnnualAgeBiomass(FILE *fid, MSEBoxModel *bm) {
     for (sp = 0; sp < bm->K_num_tot_sp; sp++) {
         if ( (int)(FunctGroupArray[sp].speciesParams[flag_id])){
             for (i = 0; i < FunctGroupArray[sp].numStocks; i++) {
-                this_cohort = 0;
+                //this_cohort = 0;
                 for (cohort = 0; cohort < FunctGroupArray[sp].numCohortsXnumGenes; cohort++) {
                     for (k = 0; k < FunctGroupArray[sp].ageClassSize; k++) {
                         fprintf(fid, " %e", bm->totagepop[sp][cohort] * bm->X_CN * mg_2_tonne * bm->tempPopRatio[i][sp][cohort][k]);
                     }
-                    this_cohort++;
+                    //this_cohort++;
                 }
             }
         }
@@ -3118,7 +3119,7 @@ static void Write_BoxLight(FILE *fid, MSEBoxModel *bm) {
 	int b;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write box light information\n");
+        printf( "Write box light information\n");
 
 	/* Write time */
 	fprintf(fid, "%e", bm->dayt);
@@ -3176,7 +3177,7 @@ static void Write_BoxBiomass(FILE *fid, MSEBoxModel *bm) {
 	int b, sp;
 
 	if (verbose > 1)
-		fprintf(stderr, "Write box biomass information\n");
+        printf( "Write box biomass information\n");
 
 	/* Write time */
 	//fprintf(fid, "%e", bm->dayt);

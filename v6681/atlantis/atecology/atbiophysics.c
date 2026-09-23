@@ -221,7 +221,6 @@ void Box_Light_Process(MSEBoxModel *bm, Box *pBox, FILE *llogfp) {
 
 	if (verbose > 1) {
 		printf("Light levels are assessed\n");
-		fprintf(llogfp, "Light levels are assessed\n");
 	}
 
 	/* 	Io and flagseason are global data */

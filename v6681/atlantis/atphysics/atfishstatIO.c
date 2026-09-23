@@ -80,7 +80,7 @@ void readBMFisheriesInfo(int fid, MSEBoxModel *bm) {
 	ncopts = NC_VERBOSE | NC_FATAL;
 
 	if (verbose > 1)
-		fprintf(stderr, "Entering readBMFisheriesInfo\n");
+        printf( "Entering readBMFisheriesInfo\n");
 
 	/* Inquire about this file */
 	ncinquire(fid, &ndims, &nvars, &ngatts, &recdim);
@@ -110,7 +110,7 @@ void readBMFisheriesInfo(int fid, MSEBoxModel *bm) {
 	if (n < 1)
 		warn("readBMFisheriesInfo: No fisheries statistics\n");
 	if (verbose > 1)
-		fprintf(stderr, "readBMFisheriesInfo: %ld fisheries statistics\n", n);
+        printf( "readBMFisheriesInfo: %ld fisheries statistics\n", n);
 
 	/* Allocate space for statistics info */
 	if ((bm->finfo = (FstatInfo *) malloc((size_t)n * sizeof(FstatInfo))) == NULL)

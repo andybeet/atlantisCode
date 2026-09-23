@@ -2,7 +2,7 @@ include $(top_srcdir)/PreRules.am
 
 lib_LIBRARIES=libatSS3Link.a
 
-c_sources = atSS3Link.c atSS3LinkIO.c atSS3DataGen.c atSS3Util.c
+c_sources = atSS3Link.c atSS3LinkIO.c atSS3DataGen.c atSS3Util.c atCloseKin.c 
 
 # atSS3Test.c 
 

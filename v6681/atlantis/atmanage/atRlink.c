@@ -279,7 +279,7 @@ void redus_do_assessment(int minyearC, int maxyearC, char* groupCodeC)
 /**
  * Initialize R environment for REDUS
  */
-int initRedus()
+int initRedus(int ans)
 {
     /*
     // Intialize the R environment.
