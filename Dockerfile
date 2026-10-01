@@ -3,10 +3,10 @@ FROM ubuntu:18.04
 ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-RUN apt-get update && apt-get install -yq build-essential autoconf libnetcdf-dev libxml2-dev libproj-dev subversion valgrind dos2unix gawk nano r-base
+RUN apt-get update && apt-get install -yq build-essential autoconf libnetcdf-dev libxml2-dev libproj-dev subversion valgrind dos2unix gawk nano r-base r-base-dev
 
-COPY v6681_debug/atlantis /app/atlantis
-COPY v6681_debug/svn /app/.svn
+COPY v3_6723_debug/atlantis /app/atlantis
+#COPY v3_6723_debug/svn /app/.svn
 #COPY CDFDistiller/v6490 /CDFDistiller
 
 # compile Atlantis
