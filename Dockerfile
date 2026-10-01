@@ -5,8 +5,8 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && apt-get install -yq build-essential autoconf libnetcdf-dev libxml2-dev libproj-dev subversion valgrind dos2unix gawk nano r-base
 
-COPY atlantisCode/v6681_debug/atlantis /app/atlantis
-COPY atlantisCode/v6681_debug/svn /app/.svn
+COPY v6681_debug/atlantis /app/atlantis
+COPY v6681_debug/svn /app/.svn
 #COPY CDFDistiller/v6490 /CDFDistiller
 
 # compile Atlantis
